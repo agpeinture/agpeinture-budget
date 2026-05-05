@@ -287,33 +287,9 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Helvetic
         </div>
       </div>
 
-      <!-- Données -->
       <div class="scard">
-        <div class="set-section-hdr">
-          <div class="set-icon" style="background:#7f8c8d">🗂</div>
-          <div>
-            <div class="set-section-title">Données</div>
-            <div class="set-section-sub">Gestion et sauvegarde</div>
-          </div>
-        </div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
-          <button class="set-action-btn" onclick="exportData()">
-            <span>📤</span>
-            <div>
-              <div class="sabt">Exporter les données</div>
-              <div class="sabs">Télécharge un fichier JSON de sauvegarde</div>
-            </div>
-            <span style="color:var(--muted);font-size:18px">›</span>
-          </button>
-          <button class="set-action-btn" onclick="document.getElementById('import-json').click()">
-            <span>📥</span>
-            <div>
-              <div class="sabt">Importer des données</div>
-              <div class="sabs">Restaurer depuis un fichier JSON exporté</div>
-            </div>
-            <span style="color:var(--muted);font-size:18px">›</span>
-          </button>
-          <input type="file" id="import-json" accept=".json" style="display:none" onchange="importData(this)">
+
           <button class="set-action-btn" onclick="exportAllPDF()">
             <span>📄</span>
             <div>
@@ -333,11 +309,7 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Helvetic
         </div>
       </div>
 
-      <!-- Version -->
-      <div style="text-align:center;padding:16px 0 24px;color:var(--muted);font-size:11px">
-        AG Peinture · Budget &amp; Rentabilité · v2.0<br>
-        <span style="opacity:.6">Données synchronisées via Firebase</span>
-      </div>
+
 
     </div>
   </div>
@@ -583,6 +555,7 @@ function renderDash(){
 }
 
 var activeFilter=null;
+var activePeriod=null;
 
 function renderList(){
   var el=document.getElementById('cat-list');
@@ -596,7 +569,37 @@ function renderList(){
     {key:'bad',label:'🔴',sub:'Perte',color:'#e74c3c',fn:function(b){return b.statut==='termine'&&calcB(b).marge<0;}}
   ];
 
-  var pills='<div style="display:flex;gap:7px;margin-bottom:14px">'
+  // Build period selector (months with budgets)
+  var periods=[];
+  sorted.forEach(function(b){
+    var d=new Date(b.createdAt||b.id);
+    var key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    var lbl=d.toLocaleDateString('fr-CH',{month:'long',year:'numeric'});
+    if(!periods.find(function(p){return p.key===key;}))periods.push({key:key,lbl:lbl});
+  });
+  periods.sort(function(a,b){return b.key.localeCompare(a.key);});
+
+  var periodBar='';
+  if(periods.length>1){
+    periodBar='<div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">'
+      +'<div onclick="setPeriod(null)" style="flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid '+(activePeriod===null?'var(--brand)':'var(--border)')+';background:'+(activePeriod===null?'var(--brand)':'white')+';color:'+(activePeriod===null?'white':'var(--muted)')+'">Tout</div>'
+      +periods.map(function(p){
+        var active=activePeriod===p.key;
+        return'<div onclick="setPeriod(\''+p.key+'\')" style="flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid '+(active?'var(--brand)':' var(--border)')+';background:'+(active?'var(--brand)':' white')+';color:'+(active?'white':'var(--muted)')+'">'+ p.lbl+'</div>';
+      }).join('')
+      +'</div>';
+  }
+
+  // Filter by period
+  if(activePeriod){
+    sorted=sorted.filter(function(b){
+      var d=new Date(b.createdAt||b.id);
+      var key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      return key===activePeriod;
+    });
+  }
+
+  var pills=periodBar+'<div style="display:flex;gap:7px;margin-bottom:14px">'
     +cats.map(function(cat){
       var count=sorted.filter(cat.fn).length;
       var active=activeFilter===cat.key;
