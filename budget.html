@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>AG Peinture · Budget</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{--primary:#3DB8D4;--green:#27ae60;--orange:#f39c12;--red:#e74c3c;--bg:#f0f4f8;--text:#1a2332;--muted:#7f8c8d;--border:#e0e6ed;}
+body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;color:var(--text);min-height:100vh;}
+/* Lock */
+#lock{position:fixed;inset:0;background:linear-gradient(135deg,#1a2332,#2d4a6b);display:flex;align-items:center;justify-content:center;z-index:1000;}
+#lock.hidden{display:none;}
+.lcard{background:white;border-radius:24px;padding:40px 32px;width:min(340px,90vw);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.lcard .icon{font-size:48px;margin-bottom:16px;}
+.lcard h1{font-size:22px;font-weight:700;margin-bottom:4px;}
+.lcard p{font-size:13px;color:var(--muted);margin-bottom:24px;}
+.linput{width:100%;padding:14px;border:2px solid var(--border);border-radius:12px;font-size:18px;text-align:center;letter-spacing:4px;outline:none;transition:border .2s;}
+.linput:focus{border-color:var(--primary);}
+.lbtn{width:100%;padding:14px;background:var(--primary);color:white;border:none;border-radius:12px;font-size:16px;font-weight:600;margin-top:12px;cursor:pointer;}
+.lerr{color:var(--red);font-size:13px;margin-top:8px;min-height:20px;}
+/* App */
+#app{display:none;}#app.visible{display:block;}
+/* Header */
+.hdr{background:white;padding:11px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+.hlogo{width:40px;height:40px;background:var(--primary);border-radius:11px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:14px;flex-shrink:0;}
+.hinfo{flex:1;min-width:0;}
+.hinfo h1{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hinfo p{font-size:10px;color:var(--muted);}
+.hbtn{background:var(--primary);color:white;border:none;border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.hbtn.ghost{background:#f0f4f8;color:var(--text);border:1px solid var(--border);}
+/* FB bar */
+.fbbar{display:flex;align-items:center;gap:7px;padding:7px 14px;background:white;border-bottom:1px solid var(--border);font-size:12px;}
+#fbst{flex:1;color:var(--muted);}
+.fbbtn{background:none;border:1.5px solid var(--border);border-radius:7px;padding:4px 9px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;}
+/* Content */
+.content{padding:14px;max-width:600px;margin:0 auto;}
+/* Dashboard card */
+.dash{background:white;border-radius:16px;padding:14px 16px;margin-bottom:14px;border:1px solid var(--border);}
+.dash-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:10px;}
+.dash-row{display:flex;gap:0;border-radius:10px;overflow:hidden;margin-bottom:10px;}
+.dash-col{flex:1;padding:10px 8px;text-align:center;}
+.dash-col .dval{font-size:16px;font-weight:800;color:white;}
+.dash-col .dlbl{font-size:10px;color:rgba(255,255,255,.85);margin-top:2px;}
+.dash-stats{display:flex;gap:8px;}
+.dstat{flex:1;background:var(--bg);border-radius:10px;padding:9px 8px;text-align:center;}
+.dstat .sv{font-size:14px;font-weight:700;color:var(--text);}
+.dstat .sl{font-size:10px;color:var(--muted);margin-top:2px;}
+/* Budget list */
+.blist{display:flex;flex-direction:column;gap:10px;}
+.bcard{background:white;border-radius:14px;padding:13px;border:1px solid var(--border);display:flex;align-items:center;gap:11px;cursor:pointer;transition:transform .1s;}
+.bcard:active{transform:scale(.98);}
+.mbadge{width:52px;height:52px;border-radius:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;}
+.mbadge .mp{font-size:14px;font-weight:800;color:white;line-height:1;}
+.mbadge .ml{font-size:9px;color:rgba(255,255,255,.85);font-weight:600;margin-top:2px;}
+.binfo{flex:1;min-width:0;}
+.bcl{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bch{font-size:12px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bamts{display:flex;gap:12px;margin-top:5px;}
+.bamt{font-size:10px;color:var(--muted);}
+.bamt strong{display:block;font-size:12px;font-weight:600;color:var(--text);}
+/* Empty */
+.empty{text-align:center;padding:40px 16px;background:white;border-radius:14px;border:1px solid var(--border);}
+.empty .ei{font-size:40px;margin-bottom:10px;opacity:.6;}
+.empty p{font-weight:600;font-size:14px;margin-bottom:5px;}
+.empty span{font-size:12px;color:var(--muted);}
+/* Section cards */
+.scard{background:white;border-radius:14px;padding:14px;margin-bottom:11px;border:1px solid var(--border);}
+.shdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
+.stitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--primary);}
+.spctlbl{font-size:12px;font-weight:600;color:var(--muted);}
+/* Form */
+.frow{margin-bottom:9px;}
+.frow label{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-bottom:3px;}
+.finput{width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:9px;font-size:15px;font-family:inherit;outline:none;color:var(--text);}
+.finput:focus{border-color:var(--primary);}
+.finput.num{text-align:right;}
+.finput.sm{padding:7px 9px;font-size:14px;}
+/* Devis */
+.devis-wrap{position:relative;}
+.devis-wrap .finput{padding-left:38px;font-size:19px;font-weight:700;border-color:var(--primary);}
+.devis-cur{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:600;color:var(--muted);}
+/* Lines */
+.dline{display:flex;gap:5px;align-items:center;margin-bottom:6px;}
+.dline .finput.desc{flex:2;min-width:0;}
+.dline .finput.num{flex:1;min-width:0;}
+.wline{display:flex;gap:5px;align-items:center;margin-bottom:6px;}
+.wline .finput{font-size:13px;padding:7px 8px;}
+.wline .wname{flex:2;min-width:0;}
+.wline .wh{flex:1;min-width:52px;}
+.wline .wtaux{flex:1;min-width:60px;}
+.wtot{font-size:12px;font-weight:600;color:var(--text);width:70px;text-align:right;flex-shrink:0;}
+.wpct{font-size:11px;font-weight:600;color:var(--muted);width:30px;text-align:center;flex-shrink:0;}
+.ddel{background:none;border:none;color:var(--red);font-size:19px;cursor:pointer;padding:2px 3px;flex-shrink:0;line-height:1;}
+/* Col headers */
+.col-hdrs{display:flex;gap:5px;margin-bottom:3px;padding-right:28px;}
+.col-hdrs span{font-size:10px;color:var(--muted);font-weight:500;}
+.ch-name{flex:2;}
+.ch-h,.ch-taux{flex:1;text-align:right;}
+.ch-tot{width:70px;text-align:right;}
+.ch-pct{width:30px;text-align:center;}
+/* Buttons */
+.btnadd{background:none;border:1.5px dashed var(--border);border-radius:9px;padding:8px;width:100%;color:var(--primary);font-size:13px;font-weight:600;cursor:pointer;margin-top:3px;}
+/* Total row */
+.trow{display:flex;justify-content:space-between;align-items:center;padding:5px 0;margin-top:6px;border-top:1px solid var(--border);}
+.tlabel{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+.tval{font-size:13px;font-weight:600;color:var(--text);}
+/* Result rows */
+.rrow{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);}
+.rrow:last-child{border-bottom:none;}
+.rl{font-size:12px;color:var(--muted);}
+.rv{font-size:12px;font-weight:600;display:flex;align-items:center;gap:7px;}
+.rpct{font-size:11px;font-weight:500;color:var(--muted);background:var(--bg);border-radius:5px;padding:1px 5px;}
+/* Marge box - compact inline */
+.mbox{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-radius:11px;margin-top:10px;}
+.mpct2{font-size:22px;font-weight:800;color:white;line-height:1;flex-shrink:0;}
+.mlbl2{font-size:10px;color:rgba(255,255,255,.85);flex:1;padding:0 10px;line-height:1.3;}
+.margent{font-size:12px;font-weight:700;color:white;white-space:nowrap;flex-shrink:0;}
+/* Actions */
+.actbar{display:flex;gap:9px;margin-top:4px;margin-bottom:24px;}
+.btn-danger{background:none;border:1.5px solid var(--red);color:var(--red);border-radius:9px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer;flex:1;}
+.btn-pdf{background:#f8f9fa;border:1.5px solid var(--border);color:var(--text);border-radius:9px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;}
+/* Settings page */
+.set-section-hdr{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.set-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.set-section-title{font-size:14px;font-weight:700;color:var(--text);}
+.set-section-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.set-fields{display:flex;flex-direction:column;gap:0;}
+.marge-ind{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;}
+.mind-dot{font-size:16px;flex-shrink:0;}
+.mind-info{flex:1;}
+.mind-title{font-size:13px;font-weight:700;}
+.mind-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.set-action-btn{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--border);width:100%;cursor:pointer;text-align:left;}
+.set-action-btn.danger{background:#e74c3c10;border-color:#e74c3c40;}
+.set-action-btn>span:first-child{font-size:20px;flex-shrink:0;}
+.set-action-btn>div{flex:1;}
+.sabt{font-size:13px;font-weight:600;color:var(--text);}
+.set-action-btn.danger .sabt{color:var(--red);}
+.sabs{font-size:11px;color:var(--muted);margin-top:1px;}
+/* Workers global list */
+.gw-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);}
+.gw-row:last-child{border-bottom:none;}
+.gw-dot{width:32px;height:32px;border-radius:8px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px;flex-shrink:0;}
+.gw-name{flex:1;font-size:14px;font-weight:500;}
+.gw-taux{font-size:13px;color:var(--muted);font-weight:500;}
+/* Worker picker overlay */
+#picker{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:flex-end;}
+#picker.open{display:flex;}
+.picker-sheet{background:white;border-radius:20px 20px 0 0;width:100%;max-height:70vh;overflow-y:auto;padding:16px;}
+.picker-title{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+.picker-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:10px;cursor:pointer;margin-bottom:4px;}
+.picker-item:active{background:var(--bg);}
+.picker-dot{width:36px;height:36px;border-radius:9px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;flex-shrink:0;}
+.picker-name{flex:1;font-size:14px;font-weight:500;}
+.picker-taux{font-size:13px;color:var(--muted);}
+.picker-plus{font-size:20px;color:var(--primary);font-weight:700;}
+/* Rev extra */
+.rev-extra{margin-top:8px;border-top:1px solid var(--border);padding-top:9px;}
+</style>
+</head>
+<body>
+
+<!-- Lock -->
+<div id="lock">
+  <div class="lcard">
+    <div class="icon">🔒</div>
+    <h1>AG Peinture</h1>
+    <p>Budget · Rentabilité chantier</p>
+    <input class="linput" type="password" id="lpwd" placeholder="Mot de passe">
+    <button class="lbtn" onclick="unlock()">Entrer</button>
+    <div class="lerr" id="lerr"></div>
+  </div>
+</div>
+
+<!-- Worker picker overlay -->
+<div id="picker">
+  <div class="picker-sheet">
+    <div class="picker-title">
+      <span>Choisir un ouvrier</span>
+      <button onclick="closePicker()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
+    </div>
+    <div id="picker-list"></div>
+    <button class="btnadd" onclick="closePicker();addBlankMOLine()">+ Saisie manuelle</button>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="hdr">
+    <img src="data:image/png;base64,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" style="height:40px;width:auto;object-fit:contain;flex-shrink:0" alt="AG Peinture">
+    <div class="hinfo">
+      <h1 id="htitle">Budget Chantier</h1>
+      <p style="color:var(--primary);font-weight:600">Rentabilité</p>
+    </div>
+    <div style="display:flex;gap:6px;flex-shrink:0" id="hbtns">
+      <button class="hbtn ghost" onclick="exportAllPDF()" title="Exporter tous les budgets en PDF">📄</button>
+      <button class="hbtn ghost" onclick="toWorkers()">⚙️ Paramètres</button>
+      <button class="hbtn" onclick="newBudget()">+ Nouveau</button>
+    </div>
+  </div>
+  <div class="fbbar">
+    <span id="fbst">💾 Chargement...</span>
+    <button class="fbbtn" onclick="window.fbForceReload2&&fbForceReload2()">☁️⬇️ Charger</button>
+    <button class="fbbtn" style="background:var(--green);color:white;border-color:var(--green)" onclick="window.fbSave2&&fbSave2()">☁️⬆️ Sauv.</button>
+  </div>
+
+  <!-- List view -->
+  <div id="vlist" class="content">
+    <div id="cat-list"></div>
+  </div>
+
+  <!-- Workers view -->
+  <div id="vworkers" style="display:none">
+    <div class="content">
+
+      <!-- Entreprise -->
+      <div class="scard">
+        <div class="set-section-hdr">
+          <div class="set-icon" style="background:var(--primary)">🏢</div>
+          <div>
+            <div class="set-section-title">Informations entreprise</div>
+            <div class="set-section-sub">Utilisées dans les PDF générés</div>
+          </div>
+        </div>
+        <div class="set-fields">
+          <div class="frow"><label>Nom de la société</label><input class="finput sm" id="co-nom" placeholder="AG Peinture" oninput="saveCo()"></div>
+          <div class="frow"><label>Adresse</label><input class="finput sm" id="co-addr" placeholder="Case postale 1290, 1260 Nyon" oninput="saveCo()"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="frow"><label>Téléphone</label><input class="finput sm" id="co-tel" placeholder="079 489 16 39" oninput="saveCo()"></div>
+            <div class="frow"><label>Email</label><input class="finput sm" id="co-email" placeholder="info@agpeinture.ch" oninput="saveCo()"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ouvriers -->
+      <div class="scard">
+        <div class="set-section-hdr">
+          <div class="set-icon" style="background:#27ae60">👷</div>
+          <div>
+            <div class="set-section-title">Ouvriers</div>
+            <div class="set-section-sub">Taux horaires par défaut</div>
+          </div>
+        </div>
+        <div id="gw-list"></div>
+        <div style="display:flex;gap:7px;margin-top:10px;align-items:center">
+          <input class="finput sm" id="gw-name" placeholder="Nom de l'ouvrier" style="flex:2">
+          <input class="finput sm num" id="gw-taux" type="number" placeholder="CHF/h" step="0.01" style="flex:1;max-width:90px">
+          <button class="hbtn" onclick="saveGW()" style="flex-shrink:0;padding:7px 12px">Ajouter</button>
+        </div>
+      </div>
+
+      <!-- Seuils de marge -->
+      <div class="scard">
+        <div class="set-section-hdr">
+          <div class="set-icon" style="background:#7b2d8b">📊</div>
+          <div>
+            <div class="set-section-title">Indicateurs de marge</div>
+            <div class="set-section-sub">Codes couleur de rentabilité</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+          <div class="marge-ind" style="background:#e74c3c20;border:1px solid #e74c3c">
+            <div class="mind-dot" style="background:#e74c3c">🔴</div>
+            <div class="mind-info">
+              <div class="mind-title" style="color:#e74c3c">Perte</div>
+              <div class="mind-sub">Marge inférieure à 0% · Le chantier coûte plus qu'il ne rapporte</div>
+            </div>
+          </div>
+          <div class="marge-ind" style="background:#f39c1220;border:1px solid #f39c12">
+            <div class="mind-dot" style="background:#f39c12">🟠</div>
+            <div class="mind-info">
+              <div class="mind-title" style="color:#f39c12">Moyen</div>
+              <div class="mind-sub">Marge entre 0% et 9% · Rentable mais faible</div>
+            </div>
+          </div>
+          <div class="marge-ind" style="background:#27ae6020;border:1px solid #27ae60">
+            <div class="mind-dot" style="background:#27ae60">🟢</div>
+            <div class="mind-info">
+              <div class="mind-title" style="color:#27ae60">Top</div>
+              <div class="mind-sub">Marge de 10% ou plus · Bonne rentabilité</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Données -->
+      <div class="scard">
+        <div class="set-section-hdr">
+          <div class="set-icon" style="background:#7f8c8d">🗂</div>
+          <div>
+            <div class="set-section-title">Données</div>
+            <div class="set-section-sub">Gestion et sauvegarde</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+          <button class="set-action-btn" onclick="exportData()">
+            <span>📤</span>
+            <div>
+              <div class="sabt">Exporter les données</div>
+              <div class="sabs">Télécharge un fichier JSON de sauvegarde</div>
+            </div>
+            <span style="color:var(--muted);font-size:18px">›</span>
+          </button>
+          <button class="set-action-btn" onclick="document.getElementById('import-json').click()">
+            <span>📥</span>
+            <div>
+              <div class="sabt">Importer des données</div>
+              <div class="sabs">Restaurer depuis un fichier JSON exporté</div>
+            </div>
+            <span style="color:var(--muted);font-size:18px">›</span>
+          </button>
+          <input type="file" id="import-json" accept=".json" style="display:none" onchange="importData(this)">
+          <button class="set-action-btn" onclick="exportAllPDF()">
+            <span>📄</span>
+            <div>
+              <div class="sabt">Exporter tous les budgets en PDF</div>
+              <div class="sabs">Génère un PDF complet avec tous les chantiers</div>
+            </div>
+            <span style="color:var(--muted);font-size:18px">›</span>
+          </button>
+          <button class="set-action-btn danger" onclick="resetData()">
+            <span>🗑</span>
+            <div>
+              <div class="sabt">Réinitialiser</div>
+              <div class="sabs">Supprime tous les budgets · Irréversible</div>
+            </div>
+            <span style="color:var(--red);font-size:18px">›</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Version -->
+      <div style="text-align:center;padding:16px 0 24px;color:var(--muted);font-size:11px">
+        AG Peinture · Budget &amp; Rentabilité · v2.0<br>
+        <span style="opacity:.6">Données synchronisées via Firebase</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Budget edit view -->
+  <div id="vedit" style="display:none">
+    <div class="content">
+      <!-- Infos -->
+      <div class="scard">
+        <div class="stitle" style="margin-bottom:11px">📋 Informations</div>
+        <div class="frow"><label>Client</label><input class="finput" id="f-client" placeholder="Nom du client" oninput="autoSave()"></div>
+        <div class="frow"><label>Chantier / Description</label><input class="finput" id="f-chantier" placeholder="Ex: Villa Dupont – Façade" oninput="autoSave()"></div>
+        <div class="frow">
+          <label>Statut</label>
+          <select class="finput" id="f-statut" onchange="autoSave()">
+            <option value="encours">🔵 En cours</option>
+            <option value="termine">✅ Terminé</option>
+          </select>
+        </div>
+        <div class="frow"><label>Notes</label><textarea class="finput" id="f-notes" placeholder="Observations, remarques..." rows="2" style="resize:none;font-size:13px" oninput="autoSave()"></textarea></div>
+      </div>
+
+      <!-- Revenus -->
+      <div class="scard">
+        <div class="stitle" style="margin-bottom:11px">💰 Revenus</div>
+        <div class="frow">
+          <label>Devis HT (CHF)</label>
+          <div class="devis-wrap">
+            <span class="devis-cur">CHF</span>
+            <input class="finput num" type="number" id="f-devis" placeholder="0.00" min="0" step="100" oninput="calcAll()">
+          </div>
+        </div>
+        <div id="rev-extras" style="display:none"><div id="rev-lines"></div></div>
+        <button class="btnadd" onclick="addRevLine()">+ Plus-value / autre revenu</button>
+        <div class="trow"><span class="tlabel">Revenus totaux</span><span class="tval" id="r-rev">CHF 0.00</span></div>
+      </div>
+
+      <!-- Ouvriers -->
+      <div class="scard">
+        <div class="shdr">
+          <div class="stitle">👷 Ouvriers</div>
+          <div class="spctlbl" id="pct-mo">0% du devis</div>
+        </div>
+        <div class="col-hdrs">
+          <span class="ch-name">Nom</span>
+          <span class="ch-h">Heures</span>
+          <span class="ch-taux">CHF/h</span>
+          <span class="ch-tot">Total</span>
+          <span class="ch-pct">%</span>
+        </div>
+        <div id="mo-lines"></div>
+        <button class="btnadd" onclick="openPicker()">+ Ajouter ouvrier</button>
+        <div class="trow"><span class="tlabel">Total ouvriers</span><span class="tval" id="r-mo">CHF 0.00</span></div>
+      </div>
+
+      <!-- Matériel -->
+      <div class="scard">
+        <div class="shdr">
+          <div class="stitle">🪣 Matériel</div>
+          <div class="spctlbl" id="pct-mat">0% du devis</div>
+        </div>
+        <div id="mat-lines"></div>
+        <button class="btnadd" onclick="addMatLine()">+ Ajouter matériel</button>
+        <div class="trow"><span class="tlabel">Total matériel</span><span class="tval" id="r-mat">CHF 0.00</span></div>
+      </div>
+
+      <!-- Sous-traitance -->
+      <div class="scard">
+        <div class="shdr">
+          <div class="stitle">🤝 Sous-traitance</div>
+          <div class="spctlbl" id="pct-st">0% du devis</div>
+        </div>
+        <div id="st-lines"></div>
+        <button class="btnadd" onclick="addSTLine()">+ Ajouter entreprise</button>
+        <div class="trow"><span class="tlabel">Total sous-traitance</span><span class="tval" id="r-st">CHF 0.00</span></div>
+      </div>
+
+      <!-- Résultat -->
+      <div class="scard">
+        <div class="stitle" style="margin-bottom:11px">📊 Résultat</div>
+        <div class="rrow"><span class="rl">Revenus totaux</span><span class="rv"><span id="r2-rev">CHF 0.00</span><span class="rpct" id="p2-rev" style="color:var(--primary)">100%</span></span></div>
+        <div class="rrow"><span class="rl">– Ouvriers</span><span class="rv"><span id="r2-mo">CHF 0.00</span><span class="rpct" id="p2-mo">0%</span></span></div>
+        <div class="rrow"><span class="rl">– Matériel</span><span class="rv"><span id="r2-mat">CHF 0.00</span><span class="rpct" id="p2-mat">0%</span></span></div>
+        <div class="rrow"><span class="rl">– Sous-traitance</span><span class="rv"><span id="r2-st">CHF 0.00</span><span class="rpct" id="p2-st">0%</span></span></div>
+        <div class="rrow"><span class="rl" style="font-weight:700;color:var(--text)">COÛT TOTAL</span><span class="rv"><span id="r2-cout" style="font-size:15px">CHF 0.00</span><span class="rpct" id="p2-cout">0%</span></span></div>
+        <div class="mbox" id="mbox">
+          <div class="mpct2" id="mpct">0%</div>
+          <div class="mlbl2" id="mlbl">MARGE</div>
+          <div class="margent" id="margent">CHF 0.00 restant</div>
+        </div>
+      </div>
+
+      <div class="actbar">
+        <button class="btn-pdf" onclick="genPDF()">📄 PDF</button>
+        <button class="btn-danger" onclick="delBudget()">🗑 Supprimer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+// LOCK
+document.getElementById('lpwd').addEventListener('keydown',function(e){if(e.key==='Enter')unlock();});
+setTimeout(function(){var i=document.getElementById('lpwd');if(i)i.focus();},200);
+function unlock(){
+  if(document.getElementById('lpwd').value==='397312'){
+    document.getElementById('lock').classList.add('hidden');
+    document.getElementById('app').classList.add('visible');
+    if(window.refreshApp2)window.refreshApp2();
+  }else{
+    document.getElementById('lerr').textContent='Mot de passe incorrect';
+    setTimeout(function(){document.getElementById('lerr').textContent='';},2000);
+  }
+}
+</script>
+
+<script>
+// FIREBASE
+(function(){
+  function fbs(t,c){var e=document.getElementById('fbst');if(e){e.textContent=t;e.style.color=c||'#27ae60';}}
+  if(typeof firebase==='undefined'){fbs('💾 Mode local','#7f8c8d');setTimeout(function(){window.refreshApp2&&window.refreshApp2();},100);return;}
+  try{
+    var fbApp;try{fbApp=firebase.app();}catch(e){fbApp=firebase.initializeApp({apiKey:'AIzaSyB4387wUDckjCkx5Ac5cTiDwsmyGEZferQ',authDomain:'agpeinture-416d1.firebaseapp.com',projectId:'agpeinture-416d1',storageBucket:'agpeinture-416d1.firebasestorage.app',messagingSenderId:'837260095027',appId:'1:837260095027:web:4a34e02247532a4c8c7d46'});}
+    var db=firebase.firestore();
+    var DOC=db.collection('appdata').doc('agpeinture-budget-data');
+    var KS=['agp_budgets','agp_bworkers'];
+    var started=false,dirty=false;
+    window.fbSave2=function(){var d={_t:Date.now()};KS.forEach(function(k){d[k]=localStorage.getItem(k)||'';});fbs('☁️ Sauvegarde...','#f39c12');DOC.set(d).then(function(){fbs('☁️ Synchronisé','#27ae60');}).catch(function(e){fbs('⚠️ '+e.message,'#e74c3c');});};
+    window.fbForceReload2=function(){fbs('☁️ Chargement...','#f39c12');DOC.get().then(function(doc){if(doc.exists){var d=doc.data();KS.forEach(function(k){if(d[k])localStorage.setItem(k,d[k]);});fbs('✅ Chargé !','#27ae60');window.refreshApp2&&window.refreshApp2();}else fbs('☁️ Aucune donnée','#f39c12');}).catch(function(e){fbs('⚠️ '+e.message,'#e74c3c');});};
+    DOC.onSnapshot(function(doc){
+      if(doc.exists){var d=doc.data(),ch=false;KS.forEach(function(k){if(d[k]&&d[k]!==localStorage.getItem(k)){localStorage.setItem(k,d[k]);ch=true;}});fbs('☁️ Synchronisé','#27ae60');if(!started){started=true;window.refreshApp2&&window.refreshApp2();}else if(ch)window.refreshApp2&&window.refreshApp2();}
+      else{fbs('☁️ Prêt','#27ae60');if(!started){started=true;window.refreshApp2&&window.refreshApp2();}}
+    },function(e){fbs('⚠️ '+e.message,'#e74c3c');if(!started){started=true;window.refreshApp2&&window.refreshApp2();}});
+    var _o=localStorage.setItem.bind(localStorage);
+    localStorage.setItem=function(k,v){_o(k,v);if(KS.indexOf(k)>=0){dirty=true;clearTimeout(window._fbt2);window._fbt2=setTimeout(function(){window.fbSave2&&window.fbSave2();dirty=false;},3000);fbs('☁️ Sauvegarde...','#f39c12');}};
+    setInterval(function(){if(dirty&&window.fbSave2){window.fbSave2();dirty=false;}},30000);
+    window.addEventListener('beforeunload',function(){if(dirty&&window.fbSave2)try{window.fbSave2();}catch(e){}});
+    document.addEventListener('visibilitychange',function(){if(document.hidden&&dirty&&window.fbSave2)try{window.fbSave2();}catch(e){}});
+  }catch(e){fbs('💾 Mode local','#7f8c8d');setTimeout(function(){window.refreshApp2&&window.refreshApp2();},100);}
+})();
+</script>
+
+<script>
+// APP
+var LOGO_URI='data:image/jpeg;base64,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';
+var DEFAULT_GW=[{id:1,name:'Pereira',tauxH:53.11},{id:2,name:'Guess',tauxH:45.87},{id:3,name:'Nico',tauxH:44.43},{id:4,name:'Sergio',tauxH:56.40}];
+var budgets=[];
+var gworkers=[]; // global workers list
+var curId=null;
+var curView='list'; // list | workers | edit
+
+function gid(){return Date.now()*1000+Math.floor(Math.random()*1000);}
+function esc(s){var d=document.createElement('div');d.textContent=String(s||'');return d.innerHTML;}
+function chf(n){return'CHF '+parseFloat(n||0).toFixed(2);}
+function pad2(n){return n<10?'0'+n:''+n;}
+
+// COLORS — rouge <0%, orange 0-9%, vert ≥10%
+function colMarge(p){return p<0?'#e74c3c':p<10?'#f39c12':'#27ae60';}
+function lblMarge(p){return p<0?'🔴 PERTE — Coût dépasse les revenus':p<10?'🟠 MOYEN — Marge faible (0–9%)':'🟢 TOP — Bonne marge ≥ 10%';}
+
+function load(){
+  try{var b=JSON.parse(localStorage.getItem('agp_budgets'));if(Array.isArray(b))budgets=b;}catch(e){budgets=[];}
+  try{var w=JSON.parse(localStorage.getItem('agp_bworkers'));if(Array.isArray(w)&&w.length)gworkers=w;else gworkers=DEFAULT_GW.map(function(x){return Object.assign({},x);});}catch(e){gworkers=DEFAULT_GW.map(function(x){return Object.assign({},x);});}
+}
+function save(){localStorage.setItem('agp_budgets',JSON.stringify(budgets));localStorage.setItem('agp_bworkers',JSON.stringify(gworkers));}
+
+// Company info
+function loadCo(){
+  try{return JSON.parse(localStorage.getItem('agp_company'))||{};}catch(e){return{};}
+}
+function saveCo(){
+  var co={nom:document.getElementById('co-nom').value,addr:document.getElementById('co-addr').value,tel:document.getElementById('co-tel').value,email:document.getElementById('co-email').value};
+  localStorage.setItem('agp_company',JSON.stringify(co));
+}
+function fillCoFields(){
+  var co=loadCo();
+  document.getElementById('co-nom').value=co.nom||'AG Peinture';
+  document.getElementById('co-addr').value=co.addr||'Case postale 1290, 1260 Nyon';
+  document.getElementById('co-tel').value=co.tel||'079 489 16 39';
+  document.getElementById('co-email').value=co.email||'info@agpeinture.ch';
+}
+function exportData(){
+  var data={budgets:budgets,workers:gworkers,company:loadCo(),exportedAt:new Date().toISOString()};
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='agpeinture_budgets_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+}
+function resetData(){
+  if(!confirm('Supprimer TOUS les budgets ?\nCette action est irréversible.'))return;
+  budgets=[];save();toList();
+}
+
+function calcB(b){
+  var devis=+b.devisHT||0;
+  var extras=0;(b.revExtras||[]).forEach(function(l){extras+=+l.montant||0;});
+  var rev=devis+extras;
+  var mo=0;(b.lignesMO||[]).forEach(function(l){mo+=(+l.heures||0)*(+l.tauxH||0);});
+  var mat=0;(b.lignesMat||[]).forEach(function(l){mat+=+l.montant||0;});
+  var st=0;(b.lignesST||[]).forEach(function(l){st+=+l.montant||0;});
+  var cout=mo+mat+st;var argent=rev-cout;var marge=rev>0?(argent/rev*100):0;
+  var pmo=devis>0?(mo/devis*100):0,pmat=devis>0?(mat/devis*100):0,pst=devis>0?(st/devis*100):0;
+  return{devis:devis,rev:rev,mo:mo,mat:mat,st:st,cout:cout,argent:argent,marge:marge,pmo:pmo,pmat:pmat,pst:pst};
+}
+
+// REFRESH
+window.refreshApp2=function(){load();if(curView==='edit'&&curId){var b=budgets.find(function(x){return x.id===curId;});if(b)renderEdit(b);else toList();}else if(curView==='workers'){renderGWorkers();}else toList();};
+
+// ===== LIST =====
+function toList(){
+  curView='list';
+  document.getElementById('vlist').style.display='block';
+  document.getElementById('vworkers').style.display='none';
+  document.getElementById('vedit').style.display='none';
+  document.getElementById('htitle').textContent='Budget Chantier';
+  document.getElementById('hbtns').innerHTML='<button class="hbtn ghost" onclick="toWorkers()">⚙️ Paramètres</button><button class="hbtn" onclick="newBudget()">+ Nouveau</button>';
+  renderList();
+}
+
+function renderDash(){
+  var el=document.getElementById('dash-wrap');
+  if(!budgets.length){el.innerHTML='';return;}
+  var tot=budgets.length,top=0,med=0,perte=0,totalRev=0,totalArgent=0;
+  budgets.forEach(function(b){var c=calcB(b);totalRev+=c.rev;totalArgent+=c.argent;if(c.marge>=10)top++;else if(c.marge>=0)med++;else perte++;});
+  var margeGlob=totalRev>0?(totalArgent/totalRev*100):0;
+  var col=colMarge(margeGlob);
+  el.innerHTML='<div class="dash">'
+    +'<div class="dash-title">📊 Récapitulatif global · '+tot+' budget'+(tot>1?'s':'')+'</div>'
+    +'<div class="dash-row">'
+      +'<div class="dash-col" style="background:var(--green)"><div class="dval">'+top+'</div><div class="dlbl">🟢 ≥ 10%</div></div>'
+      +'<div class="dash-col" style="background:var(--orange)"><div class="dval">'+med+'</div><div class="dlbl">🟠 0–9%</div></div>'
+      +'<div class="dash-col" style="background:var(--red)"><div class="dval">'+perte+'</div><div class="dlbl">🔴 Perte</div></div>'
+    +'</div>'
+    +'<div class="dash-stats">'
+      +'<div class="dstat"><div class="sv">'+chf(totalRev)+'</div><div class="sl">Revenus totaux</div></div>'
+      +'<div class="dstat" style="background:'+col+'20;border:1px solid '+col+'"><div class="sv" style="color:'+col+'">'+margeGlob.toFixed(1)+'%</div><div class="sl">Marge globale</div></div>'
+      +'<div class="dstat"><div class="sv" style="color:'+(totalArgent>=0?'var(--green)':'var(--red)')+'">'+chf(totalArgent)+'</div><div class="sl">Restant</div></div>'
+    +'</div>'
+    +'</div>';
+}
+
+var activeFilter=null;
+
+function renderList(){
+  var el=document.getElementById('cat-list');
+  if(!budgets.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><p>Aucun budget</p><span>Tape "+ Nouveau" pour commencer</span></div>';return;}
+  var sorted=budgets.slice().sort(function(a,b){return(b.updatedAt||b.id)-(a.updatedAt||a.id);});
+
+  var cats=[
+    {key:'encours',label:'⏳',sub:'En cours',color:'#7f8c8d',fn:function(b){return b.statut!=='termine';}},
+    {key:'top',label:'🟢',sub:'Top',color:'#27ae60',fn:function(b){return b.statut==='termine'&&calcB(b).marge>=10;}},
+    {key:'med',label:'🟠',sub:'Moyen',color:'#f39c12',fn:function(b){return b.statut==='termine'&&calcB(b).marge>=0&&calcB(b).marge<10;}},
+    {key:'bad',label:'🔴',sub:'Perte',color:'#e74c3c',fn:function(b){return b.statut==='termine'&&calcB(b).marge<0;}}
+  ];
+
+  var pills='<div style="display:flex;gap:7px;margin-bottom:14px">'
+    +cats.map(function(cat){
+      var count=sorted.filter(cat.fn).length;
+      var active=activeFilter===cat.key;
+      var isGrey=cat.key==='encours';
+      return'<div onclick="setFilter(\''+cat.key+'\')" style="flex:1;padding:11px 6px;border-radius:12px;text-align:center;cursor:pointer;border:2px solid '+(active?cat.color:cat.color+'50')+';background:'+(active?cat.color+'25':isGrey?'#f8f9fa':'white')+';transition:all .15s">'
+        +'<div style="font-size:20px;margin-bottom:2px">'+cat.label+'</div>'
+        +'<div style="font-size:17px;font-weight:800;color:'+cat.color+'">'+count+'</div>'
+        +'<div style="font-size:10px;color:var(--muted);margin-top:1px">'+cat.sub+'</div>'
+        +'</div>';
+    }).join('')
+    +'</div>';
+
+  var filtered=activeFilter
+    ?sorted.filter(cats.find(function(c){return c.key===activeFilter;}).fn)
+    :sorted;
+
+  var cards=filtered.length?filtered.map(function(b){
+    var c=calcB(b);
+    var termine=b.statut==='termine';
+    var col=termine?colMarge(c.marge):'#95a5a6';
+    var noteSnippet=b.notes?('<div style="font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">💬 '+esc(b.notes)+'</div>'):'';
+    var margeDisplay=termine
+      ?('<div class="mp">'+c.marge.toFixed(0)+'%</div><div class="ml">MARGE</div>')
+      :('<div style="font-size:18px">⏳</div><div class="ml">En cours</div>');
+    return'<div class="bcard" onclick="open1('+b.id+')">'
+      +'<div class="mbadge" style="background:'+col+'">'+margeDisplay+'</div>'
+      +'<div class="binfo">'
+        +'<div class="bcl">'+esc(b.client||'Sans nom')+'</div>'
+        +'<div class="bch">'+esc(b.chantier||'—')+'</div>'
+        +'<div class="bamts">'
+          +'<div class="bamt"><strong>'+chf(c.rev)+'</strong>Devis</div>'
+          +(termine
+            ?'<div class="bamt"><strong style="color:'+(c.argent>=0?'var(--green)':'var(--red)')+'">'+chf(c.argent)+'</strong>Restant</div>'
+            :'<div class="bamt"><strong style="color:var(--muted)">'+chf(c.cout)+'</strong>Saisi</div>')
+          +'<div class="bamt"><strong>'+chf(c.cout)+'</strong>Coûts</div>'
+        +'</div>'
+        +noteSnippet
+      +'</div>'
+      +'</div>';
+  }).join(''):'<div style="text-align:center;padding:24px;font-size:13px;color:var(--muted);background:white;border-radius:12px;border:1px solid var(--border)">Aucun chantier ici</div>';
+
+  el.innerHTML=pills+'<div style="display:flex;flex-direction:column;gap:8px">'+cards+'</div>';
+}
+
+function setFilter(key){
+  activeFilter=activeFilter===key?null:key;
+  renderList();
+}
+
+function toggleCat(){}
+
+// ===== GLOBAL WORKERS =====
+function toWorkers(){
+  curView='workers';
+  document.getElementById('vlist').style.display='none';
+  document.getElementById('vworkers').style.display='block';
+  document.getElementById('vedit').style.display='none';
+  document.getElementById('htitle').textContent='Paramètres';
+  document.getElementById('hbtns').innerHTML='<button class="hbtn ghost" onclick="toList()">← Retour</button>';
+  fillCoFields();
+  renderGWorkers();
+}
+
+function renderGWorkers(){
+  var el=document.getElementById('gw-list');
+  if(!gworkers.length){el.innerHTML='<p style="font-size:13px;color:var(--muted);padding:8px 0">Aucun ouvrier — ajoutez-en ci-dessous</p>';return;}
+  el.innerHTML=gworkers.map(function(w){
+    return'<div class="gw-row">'
+      +'<div class="gw-dot">'+esc(w.name.substring(0,2).toUpperCase())+'</div>'
+      +'<input class="finput sm gw-edit-name" data-wid="'+w.id+'" value="'+esc(w.name)+'" style="flex:1" oninput="updateGW('+w.id+',\'name\',this.value)">'
+      +'<input class="finput sm num gw-edit-taux" data-wid="'+w.id+'" type="number" value="'+w.tauxH+'" style="width:80px" oninput="updateGW('+w.id+',\'tauxH\',this.value)">'
+      +'<span style="font-size:11px;color:var(--muted);margin:0 2px">CHF/h</span>'
+      +'<button class="ddel" onclick="delGW('+w.id+')">×</button>'
+      +'</div>';
+  }).join('');
+}
+
+function updateGW(id,field,val){
+  var w=gworkers.find(function(x){return x.id===id;});
+  if(!w)return;
+  if(field==='name')w.name=val;
+  else if(field==='tauxH')w.tauxH=parseFloat(val)||0;
+  // Update dot
+  var dots=document.querySelectorAll('.gw-dot');
+  var rows=document.querySelectorAll('.gw-row');
+  rows.forEach(function(row){
+    var inp=row.querySelector('.gw-edit-name');
+    if(inp&&parseInt(inp.getAttribute('data-wid'))===id){
+      var dot=row.querySelector('.gw-dot');
+      if(dot)dot.textContent=w.name.substring(0,2).toUpperCase();
+    }
+  });
+  save();
+}
+
+function saveGW(){
+  var nm=document.getElementById('gw-name').value.trim();
+  var tx=parseFloat(document.getElementById('gw-taux').value)||0;
+  if(!nm){alert('Entrez un nom.');return;}
+  gworkers.push({id:gid(),name:nm,tauxH:tx});
+  save();
+  document.getElementById('gw-name').value='';
+  document.getElementById('gw-taux').value='';
+  renderGWorkers();
+}
+
+function delGW(id){
+  if(!confirm('Supprimer cet ouvrier ?'))return;
+  gworkers=gworkers.filter(function(x){return x.id!==id;});
+  save();renderGWorkers();
+}
+
+// ===== WORKER PICKER =====
+function openPicker(){
+  var el=document.getElementById('picker-list');
+  if(!gworkers.length){
+    el.innerHTML='<p style="font-size:13px;color:var(--muted);padding:8px 0">Aucun ouvrier dans la liste. Gérez-les via le bouton 👷 en haut.</p>';
+  }else{
+    el.innerHTML=gworkers.map(function(w){
+      return'<div class="picker-item" onclick="pickWorker('+w.id+')">'
+        +'<div class="picker-dot">'+esc(w.name.substring(0,2).toUpperCase())+'</div>'
+        +'<div class="picker-name">'+esc(w.name)+'</div>'
+        +'<div class="picker-taux">'+w.tauxH.toFixed(2)+' CHF/h</div>'
+        +'<div class="picker-plus">+</div>'
+        +'</div>';
+    }).join('');
+  }
+  document.getElementById('picker').classList.add('open');
+}
+function closePicker(){document.getElementById('picker').classList.remove('open');}
+document.getElementById('picker').addEventListener('click',function(e){if(e.target===this)closePicker();});
+
+function pickWorker(id){
+  var w=gworkers.find(function(x){return x.id===id;});
+  if(!w)return;
+  closePicker();
+  addMOLineWithWorker(w.name,w.tauxH);
+}
+
+// ===== BUDGET =====
+function newBudget(){
+  var b={id:gid(),client:'',chantier:'',statut:'encours',devisHT:0,revExtras:[],lignesMO:[],lignesMat:[],lignesST:[],createdAt:Date.now(),updatedAt:Date.now()};
+  budgets.push(b);save();curId=b.id;renderEdit(b);
+}
+function open1(id){curId=id;var b=budgets.find(function(x){return x.id===id;});if(b)renderEdit(b);}
+
+function renderEdit(b){
+  curView='edit';
+  document.getElementById('vlist').style.display='none';
+  document.getElementById('vworkers').style.display='none';
+  document.getElementById('vedit').style.display='block';
+  document.getElementById('htitle').textContent=b.client||'Nouveau budget';
+  document.getElementById('hbtns').innerHTML='<button class="hbtn ghost" onclick="flush();toList()">← Liste</button>';
+  document.getElementById('f-client').value=b.client||'';
+  document.getElementById('f-chantier').value=b.chantier||'';
+  document.getElementById('f-statut').value=b.statut||'encours';
+  document.getElementById('f-notes').value=b.notes||'';
+  document.getElementById('f-devis').value=b.devisHT||'';
+  renderRevExtras(b);renderMOLines(b);renderMatLines(b);renderSTLines(b);
+  calcAll();
+}
+
+// REV EXTRAS
+function renderRevExtras(b){
+  var extras=b.revExtras||[];
+  var wrap=document.getElementById('rev-extras');
+  wrap.style.display=extras.length?'block':'none';
+  document.getElementById('rev-lines').innerHTML=extras.map(function(l){
+    return'<div class="dline rev-line">'
+      +'<input class="finput desc rev-desc" type="text" placeholder="Description" value="'+esc(l.desc||'')+'" oninput="autoSave()">'
+      +'<input class="finput num rev-mnt" type="number" placeholder="CHF" step="10" value="'+(l.montant||'')+'" oninput="calcAll()">'
+      +'<button class="ddel" onclick="this.parentElement.remove();checkRevWrap();autoSave()">×</button>'
+      +'</div>';
+  }).join('');
+}
+function addRevLine(){
+  var wrap=document.getElementById('rev-extras');wrap.style.display='block';
+  var el=document.getElementById('rev-lines');
+  var d=document.createElement('div');d.className='dline rev-line';
+  d.innerHTML='<input class="finput desc rev-desc" type="text" placeholder="Description" oninput="autoSave()">'
+    +'<input class="finput num rev-mnt" type="number" placeholder="CHF" step="10" oninput="calcAll()">'
+    +'<button class="ddel" onclick="this.parentElement.remove();checkRevWrap();autoSave()">×</button>';
+  el.appendChild(d);d.querySelector('input').focus();
+}
+function checkRevWrap(){document.getElementById('rev-extras').style.display=document.querySelectorAll('.rev-line').length?'block':'none';}
+
+// MO LINES
+function moLineHTML(nom,h,taux){
+  var tot=(+h||0)*(+taux||0);
+  return'<div class="wline mo-line">'
+    +'<input class="finput wname mo-name" type="text" placeholder="Ouvrier" value="'+esc(nom||'')+'" oninput="autoSave()">'
+    +'<input class="finput num wh mo-h" type="number" placeholder="h" min="0" step="0.5" value="'+(h||'')+'" oninput="calcAll()">'
+    +'<input class="finput num wtaux mo-taux" type="number" placeholder="CHF/h" min="0" step="0.5" value="'+(taux||'')+'" oninput="calcAll()">'
+    +'<div class="wtot mo-tot">'+chf(tot)+'</div>'
+    +'<div class="wpct mo-wpct">—</div>'
+    +'<button class="ddel" onclick="this.parentElement.remove();autoSave()">×</button>'
+    +'</div>';
+}
+function renderMOLines(b){document.getElementById('mo-lines').innerHTML=(b.lignesMO||[]).map(function(l){return moLineHTML(l.nom,l.heures,l.tauxH);}).join('');}
+function addMOLineWithWorker(nom,taux){
+  var el=document.getElementById('mo-lines');
+  var d=document.createElement('div');d.className='wline mo-line';
+  d.innerHTML=moLineHTML(nom,'',taux);
+  el.appendChild(d);
+  d.querySelector('.mo-h').focus();
+  calcAll();
+}
+function addBlankMOLine(){
+  var el=document.getElementById('mo-lines');
+  var d=document.createElement('div');d.className='wline mo-line';
+  d.innerHTML=moLineHTML('','','');
+  el.appendChild(d);d.querySelector('input').focus();
+}
+
+// MAT LINES
+function matLineHTML(desc,mnt){
+  return'<div class="dline mat-line">'
+    +'<input class="finput desc mat-desc" type="text" placeholder="Désignation" value="'+esc(desc||'')+'" oninput="autoSave()">'
+    +'<input class="finput num mat-mnt" type="number" placeholder="CHF" step="0.01" value="'+(mnt||'')+'" oninput="calcAll()">'
+    +'<div class="wpct mat-wpct">—</div>'
+    +'<button class="ddel" onclick="this.parentElement.remove();autoSave()">×</button>'
+    +'</div>';
+}
+function renderMatLines(b){document.getElementById('mat-lines').innerHTML=(b.lignesMat||[]).map(function(l){return matLineHTML(l.desc,l.montant);}).join('');}
+function addMatLine(){var el=document.getElementById('mat-lines');var d=document.createElement('div');d.className='dline mat-line';d.innerHTML=matLineHTML('','');el.appendChild(d);d.querySelector('input').focus();}
+
+// ST LINES
+function stLineHTML(desc,mnt){
+  return'<div class="dline st-line">'
+    +'<input class="finput desc st-desc" type="text" placeholder="Entreprise" value="'+esc(desc||'')+'" oninput="autoSave()">'
+    +'<input class="finput num st-mnt" type="number" placeholder="CHF" step="0.01" value="'+(mnt||'')+'" oninput="calcAll()">'
+    +'<div class="wpct st-wpct">—</div>'
+    +'<button class="ddel" onclick="this.parentElement.remove();autoSave()">×</button>'
+    +'</div>';
+}
+function renderSTLines(b){document.getElementById('st-lines').innerHTML=(b.lignesST||[]).map(function(l){return stLineHTML(l.desc,l.montant);}).join('');}
+function addSTLine(){var el=document.getElementById('st-lines');var d=document.createElement('div');d.className='dline st-line';d.innerHTML=stLineHTML('','');el.appendChild(d);d.querySelector('input').focus();}
+
+// CALC ALL
+function calcAll(){
+  var devis=parseFloat(document.getElementById('f-devis').value)||0;
+  var extras=0;document.querySelectorAll('.rev-mnt').forEach(function(i){extras+=parseFloat(i.value)||0;});
+  var rev=devis+extras;
+  var mo=0;
+  document.querySelectorAll('.mo-line').forEach(function(row){
+    var h=parseFloat(row.querySelector('.mo-h').value)||0;
+    var t=parseFloat(row.querySelector('.mo-taux').value)||0;
+    var tot=h*t;mo+=tot;
+    row.querySelector('.mo-tot').textContent=chf(tot);
+    var p=row.querySelector('.mo-wpct');if(p)p.textContent=devis>0?(tot/devis*100).toFixed(0)+'%':'—';
+  });
+  var mat=0;
+  document.querySelectorAll('.mat-line').forEach(function(row){
+    var mnt=parseFloat(row.querySelector('.mat-mnt').value)||0;mat+=mnt;
+    var p=row.querySelector('.mat-wpct');if(p)p.textContent=devis>0?(mnt/devis*100).toFixed(0)+'%':'—';
+  });
+  var st=0;
+  document.querySelectorAll('.st-line').forEach(function(row){
+    var mnt=parseFloat(row.querySelector('.st-mnt').value)||0;st+=mnt;
+    var p=row.querySelector('.st-wpct');if(p)p.textContent=devis>0?(mnt/devis*100).toFixed(0)+'%':'—';
+  });
+  var cout=mo+mat+st,argent=rev-cout,marge=rev>0?(argent/rev*100):0;
+  var pmo=devis>0?(mo/devis*100):0,pmat=devis>0?(mat/devis*100):0,pst=devis>0?(st/devis*100):0;
+  var set=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
+  set('r-rev',chf(rev));set('r-mo',chf(mo));set('r-mat',chf(mat));set('r-st',chf(st));
+  set('r2-rev',chf(rev));set('r2-mo',chf(mo));set('r2-mat',chf(mat));set('r2-st',chf(st));set('r2-cout',chf(cout));
+  // % dans résultat
+  function spct(id,val,base){var e=document.getElementById(id);if(e)e.textContent=base>0?(val/base*100).toFixed(0)+'%':'—';}
+  spct('p2-mo',mo,rev);spct('p2-mat',mat,rev);spct('p2-st',st,rev);spct('p2-cout',cout,rev);
+  set('mpct',marge.toFixed(1)+'%');set('mlbl',lblMarge(marge));set('margent',chf(argent)+' restant');
+  set('pct-mo',pmo.toFixed(0)+'% du devis');set('pct-mat',pmat.toFixed(0)+'% du devis');set('pct-st',pst.toFixed(0)+'% du devis');
+  var mb=document.getElementById('mbox');if(mb)mb.style.background=colMarge(marge);
+  autoSave();
+}
+
+// FLUSH
+function flush(){
+  if(!curId)return;
+  var b=budgets.find(function(x){return x.id===curId;});if(!b)return;
+  b.client=document.getElementById('f-client').value.trim();
+  b.chantier=document.getElementById('f-chantier').value.trim();
+  b.statut=document.getElementById('f-statut').value;
+  b.notes=document.getElementById('f-notes').value.trim();
+  b.devisHT=parseFloat(document.getElementById('f-devis').value)||0;
+  b.revExtras=[];
+  document.querySelectorAll('.rev-line').forEach(function(r){b.revExtras.push({desc:r.querySelector('.rev-desc').value.trim(),montant:parseFloat(r.querySelector('.rev-mnt').value)||0});});
+  b.lignesMO=[];
+  document.querySelectorAll('.mo-line').forEach(function(r){b.lignesMO.push({nom:r.querySelector('.mo-name').value.trim(),heures:parseFloat(r.querySelector('.mo-h').value)||0,tauxH:parseFloat(r.querySelector('.mo-taux').value)||0});});
+  b.lignesMat=[];
+  document.querySelectorAll('.mat-line').forEach(function(r){b.lignesMat.push({desc:r.querySelector('.mat-desc').value.trim(),montant:parseFloat(r.querySelector('.mat-mnt').value)||0});});
+  b.lignesST=[];
+  document.querySelectorAll('.st-line').forEach(function(r){b.lignesST.push({desc:r.querySelector('.st-desc').value.trim(),montant:parseFloat(r.querySelector('.st-mnt').value)||0});});
+  b.updatedAt=Date.now();
+}
+function autoSave(){flush();var b=budgets.find(function(x){return x.id===curId;});if(b)document.getElementById('htitle').textContent=b.client||'Nouveau budget';save();}
+
+function delBudget(){if(!curId||!confirm('Supprimer ce budget ?'))return;budgets=budgets.filter(function(x){return x.id!==curId;});save();curId=null;toList();}
+
+function importData(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var data=JSON.parse(e.target.result);
+      if(data.budgets&&Array.isArray(data.budgets)){
+        if(!confirm('Importer '+data.budgets.length+' budget(s) ?\nLes données existantes seront conservées.'))return;
+        data.budgets.forEach(function(b){
+          if(!budgets.find(function(x){return x.id===b.id;}))budgets.push(b);
+        });
+        if(data.workers&&Array.isArray(data.workers)&&data.workers.length)gworkers=data.workers;
+        save();toList();
+        alert('Import réussi !');
+      }else{alert('Fichier JSON non reconnu.');}
+    }catch(err){alert('Erreur lors de l\'import : '+err.message);}
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+function exportAllPDF(){
+  if(!budgets.length){alert('Aucun budget à exporter.');return;}
+  var J=window.jspdf?window.jspdf.jsPDF:(typeof jsPDF!=='undefined'?jsPDF:null);
+  if(!J){alert('PDF non disponible.');return;}
+  var doc=new J({orientation:'portrait',unit:'mm',format:'a4'});
+  var pw=doc.internal.pageSize.getWidth();
+  var co=loadCo();
+  var coLine=(co.nom||'AG Peinture')+' · '+(co.addr||'1260 Nyon')+' · '+(co.tel||'079 489 16 39');
+  var cats=[
+    {label:'🟢 BONNE MARGE (≥ 10%)',color:[39,174,96],fn:function(m){return m>=10;}},
+    {label:'🟠 MOYEN (0 – 9%)',color:[243,156,18],fn:function(m){return m>=0&&m<10;}},
+    {label:'🔴 PERTE (< 0%)',color:[231,76,60],fn:function(m){return m<0;}}
+  ];
+  var sorted=budgets.slice().sort(function(a,b){return(b.updatedAt||b.id)-(a.updatedAt||a.id);});
+  var firstPage=true;
+  cats.forEach(function(cat){
+    var items=sorted.filter(function(b){return cat.fn(calcB(b).marge);});
+    if(!items.length)return;
+    items.forEach(function(b){
+      if(!firstPage)doc.addPage();firstPage=false;
+      var c=calcB(b);var y=16;
+      // Header
+      doc.setFillColor(cat.color[0],cat.color[1],cat.color[2]);doc.roundedRect(14,y,pw-28,18,4,4,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont('helvetica','bold');
+      doc.text((b.client||'—')+' — '+(b.chantier||'—'),pw/2,y+7,{align:'center'});
+      doc.setFontSize(8);doc.setFont('helvetica','normal');
+      doc.text(cat.label+' · Marge : '+c.marge.toFixed(1)+'%',pw/2,y+13,{align:'center'});y+=22;
+      // Notes
+      if(b.notes){
+        doc.setFillColor(248,249,250);doc.roundedRect(14,y,pw-28,8,2,2,'F');
+        doc.setTextColor(100,100,100);doc.setFontSize(7.5);doc.setFont('helvetica','italic');
+        doc.text('💬 '+b.notes,18,y+5.5);y+=12;
+      }
+      function sec(lbl,rgb){doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.rect(14,y,pw-28,5.5,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text(lbl,17,y+4);y+=7;}
+      function row(l,r){doc.setTextColor(26,35,50);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.text(l,17,y);if(r!=null)doc.text(r,pw-14,y,{align:'right'});y+=4.5;}
+      function tot(l,r,p){doc.setDrawColor(200,200,200);doc.line(14,y,pw-14,y);y+=1;doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(26,35,50);doc.text(l,17,y+3.5);if(p!=null){doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(120,120,120);doc.text('('+p.toFixed(0)+'% du devis)',pw-48,y+3.5);}doc.setTextColor(26,35,50);doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.text(r,pw-14,y+3.5,{align:'right'});y+=8;}
+      sec('💰 REVENUS',[41,128,185]);row('Devis HT','CHF '+c.devis.toFixed(2));
+      (b.revExtras||[]).forEach(function(l){if(l.desc||l.montant)row(l.desc||'Autre','CHF '+(l.montant||0).toFixed(2));});
+      tot('REVENUS TOTAUX','CHF '+c.rev.toFixed(2),null);y+=1;
+      sec("👷 OUVRIERS",[39,174,96]);
+      var hasH=(b.lignesMO||[]).filter(function(l){return l.heures;}).length;
+      if(!hasH)row('Aucun ouvrier',null);
+      else(b.lignesMO||[]).forEach(function(l){if(l.heures)row((l.nom||'—')+'  ('+l.heures+'h × '+l.tauxH+' CHF/h)','CHF '+((+l.heures||0)*(+l.tauxH||0)).toFixed(2));});
+      tot('TOTAL OUVRIERS','CHF '+c.mo.toFixed(2),c.pmo);y+=1;
+      sec('🪣 MATÉRIEL',[230,126,34]);
+      if(!(b.lignesMat||[]).length)row('Aucun matériel',null);
+      else(b.lignesMat||[]).forEach(function(l){if(l.desc||l.montant)row(l.desc||'—','CHF '+(l.montant||0).toFixed(2));});
+      tot('TOTAL MATÉRIEL','CHF '+c.mat.toFixed(2),c.pmat);y+=1;
+      if((b.lignesST||[]).length){sec('🤝 SOUS-TRAITANCE',[142,68,173]);(b.lignesST||[]).forEach(function(l){if(l.desc||l.montant)row(l.desc||'—','CHF '+(l.montant||0).toFixed(2));});tot('TOTAL SOUS-TRAITANCE','CHF '+c.st.toFixed(2),c.pst);y+=1;}
+      // Résultat
+      var rcol=cat.color;
+      doc.setFillColor(rcol[0],rcol[1],rcol[2]);doc.roundedRect(14,y,pw-28,22,4,4,'F');
+      doc.setTextColor(255,255,255);doc.setFontSize(18);doc.setFont('helvetica','bold');
+      doc.text('MARGE : '+c.marge.toFixed(1)+'%',pw/2,y+10,{align:'center'});
+      doc.setFontSize(9);doc.setFont('helvetica','normal');
+      doc.text('Argent restant : CHF '+c.argent.toFixed(2),pw/2,y+18,{align:'center'});
+      // Footer
+      doc.setTextColor(160,160,160);doc.setFont('helvetica','normal');doc.setFontSize(6);
+      doc.text(coLine,pw/2,292,{align:'center'});
+    });
+  });
+  var nd=new Date();
+  doc.save('AG_Peinture_Budgets_'+nd.getFullYear()+pad2(nd.getMonth()+1)+pad2(nd.getDate())+'.pdf');
+}
+
+// PDF single budget
+function genPDF(){
+  flush();
+  var b=budgets.find(function(x){return x.id===curId;});if(!b){alert('Pas de budget.');return;}
+  var J=window.jspdf?window.jspdf.jsPDF:(typeof jsPDF!=='undefined'?jsPDF:null);if(!J){alert('PDF non disponible.');return;}
+  var doc=new J({orientation:'portrait',unit:'mm',format:'a4'});
+  var c=calcB(b);var pw=doc.internal.pageSize.getWidth();var y=16;
+  doc.setFillColor(61,184,212);doc.roundedRect(14,y,pw-28,18,4,4,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
+  doc.text('BUDGET CHANTIER',pw/2,y+8,{align:'center'});
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Suivi rentabilité · AG Peinture',pw/2,y+13,{align:'center'});y+=22;
+  doc.setFillColor(248,249,250);doc.roundedRect(14,y,pw-28,14,3,3,'F');
+  doc.setTextColor(26,35,50);doc.setFontSize(9);doc.setFont('helvetica','bold');
+  doc.text('CLIENT : '+(b.client||'—'),18,y+5);doc.text('CHANTIER : '+(b.chantier||'—'),18,y+10);
+  var nd=new Date();doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(120,120,120);
+  doc.text('Établi le '+pad2(nd.getDate())+'.'+pad2(nd.getMonth()+1)+'.'+nd.getFullYear(),pw-14,y+5,{align:'right'});y+=18;
+  function sec(lbl,rgb){doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.rect(14,y,pw-28,6,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(lbl,17,y+4.5);y+=8;}
+  function row(l,r){doc.setTextColor(26,35,50);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(l,17,y);if(r!=null)doc.text(r,pw-14,y,{align:'right'});y+=4.5;}
+  function tot(l,r,p){doc.setDrawColor(200,200,200);doc.line(14,y,pw-14,y);y+=1;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);doc.text(l,17,y+4);if(p!=null){doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(100,100,100);doc.text('('+p.toFixed(0)+'% du devis)',pw-50,y+4);}doc.setTextColor(26,35,50);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text(r,pw-14,y+4,{align:'right'});y+=9;}
+  sec('💰 REVENUS',[41,128,185]);row('Devis HT','CHF '+c.devis.toFixed(2));
+  (b.revExtras||[]).forEach(function(l){if(l.desc||l.montant)row(l.desc||'Autre','CHF '+(l.montant||0).toFixed(2));});
+  tot('REVENUS TOTAUX','CHF '+c.rev.toFixed(2),null);y+=2;
+  sec("👷 OUVRIERS",[39,174,96]);
+  if(!b.lignesMO||!b.lignesMO.filter(function(l){return l.heures;}).length)row('Aucun ouvrier',null);
+  else b.lignesMO.forEach(function(l){if(l.heures)row((l.nom||'—')+'  ('+l.heures+'h × '+l.tauxH+' CHF/h)','CHF '+((+l.heures||0)*(+l.tauxH||0)).toFixed(2));});
+  tot('TOTAL OUVRIERS','CHF '+c.mo.toFixed(2),c.pmo);y+=2;
+  sec('🪣 MATÉRIEL',[230,126,34]);
+  if(!b.lignesMat||!b.lignesMat.length)row('Aucun matériel',null);
+  else b.lignesMat.forEach(function(l){if(l.desc||l.montant)row(l.desc||'—','CHF '+(l.montant||0).toFixed(2));});
+  tot('TOTAL MATÉRIEL','CHF '+c.mat.toFixed(2),c.pmat);y+=2;
+  if(b.lignesST&&b.lignesST.length){sec('🤝 SOUS-TRAITANCE',[142,68,173]);b.lignesST.forEach(function(l){if(l.desc||l.montant)row(l.desc||'—','CHF '+(l.montant||0).toFixed(2));});tot('TOTAL SOUS-TRAITANCE','CHF '+c.st.toFixed(2),c.pst);y+=2;}
+  var rcol=c.marge<0?[231,76,60]:c.marge<10?[243,156,18]:[39,174,96];
+  doc.setFillColor(rcol[0],rcol[1],rcol[2]);doc.roundedRect(14,y,pw-28,30,4,4,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(24);doc.setFont('helvetica','bold');
+  doc.text('MARGE : '+c.marge.toFixed(1)+'%',pw/2,y+12,{align:'center'});
+  doc.setFontSize(9);doc.setFont('helvetica','normal');
+  doc.text(c.marge<0?'🔴 PERTE':c.marge<10?'🟠 MOYEN (0–9%)':'🟢 TOP (≥ 10%)',pw/2,y+19,{align:'center'});
+  doc.setFontSize(12);doc.setFont('helvetica','bold');
+  doc.text('Argent restant : CHF '+c.argent.toFixed(2),pw/2,y+27,{align:'center'});
+  var co=loadCo();
+  var coLine=(co.nom||'AG Peinture')+' · '+(co.addr||'Case postale 1290, 1260 Nyon')+' · '+(co.tel||'079 489 16 39')+' · '+(co.email||'info@agpeinture.ch');
+  doc.setTextColor(160,160,160);doc.setFont('helvetica','normal');doc.setFontSize(6.5);
+  doc.text(coLine,pw/2,292,{align:'center'});
+  doc.save(((b.client||'budget')+'_'+(b.chantier||'')).replace(/[^a-zA-Z0-9_-]/g,'_').substring(0,40)+'.pdf');
+}
+
+// INIT
+load();toList();
+</script>
+</body>
+</html>
