@@ -220,6 +220,11 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Helvetic
 
   <!-- List view -->
   <div id="vlist" class="content">
+    <div style="position:relative;margin-bottom:12px">
+      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;pointer-events:none">🔍</span>
+      <input id="search-budgets" type="text" placeholder="Rechercher client ou chantier..." style="width:100%;padding:11px 14px 11px 38px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;background:white;font-family:inherit" oninput="renderList()">
+    </div>
+    <div id="dash-wrap"></div>
     <div id="cat-list"></div>
   </div>
 
@@ -426,6 +431,7 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Helvetic
 
       <div class="actbar">
         <button class="btn-pdf" onclick="genPDF()">📄 PDF</button>
+        <button class="btn-pdf" style="background:var(--brand-soft);color:var(--brand)" onclick="dupBudget()">⧉ Dupliquer</button>
         <button class="btn-danger" onclick="delBudget()">🗑 Supprimer</button>
       </div>
     </div>
@@ -443,12 +449,15 @@ function unlock(){
   if(document.getElementById('lpwd').value==='397312'){
     document.getElementById('lock').classList.add('hidden');
     document.getElementById('app').classList.add('visible');
+    try{localStorage.setItem('agp_unlock_budget','ok');}catch(e){}
     if(window.refreshApp2)window.refreshApp2();
   }else{
     document.getElementById('lerr').textContent='Mot de passe incorrect';
     setTimeout(function(){document.getElementById('lerr').textContent='';},2000);
   }
 }
+// Auto-unlock si déjà validé
+try{if(localStorage.getItem('agp_unlock_budget')==='ok'){document.getElementById('lock').classList.add('hidden');document.getElementById('app').classList.add('visible');}}catch(e){}
 </script>
 
 <script>
@@ -583,7 +592,10 @@ var activePeriod=null;
 function renderList(){
   var el=document.getElementById('cat-list');
   if(!budgets.length){el.innerHTML='<div class="empty"><div class="ei">📋</div><p>Aucun budget</p><span>Tape "+ Nouveau" pour commencer</span></div>';return;}
+  var searchEl=document.getElementById('search-budgets');
+  var sq=searchEl?searchEl.value.toLowerCase():'';
   var sorted=budgets.slice().sort(function(a,b){return(b.updatedAt||b.id)-(a.updatedAt||a.id);});
+  if(sq)sorted=sorted.filter(function(b){return(b.client||'').toLowerCase().includes(sq)||(b.chantier||'').toLowerCase().includes(sq);});
 
   var cats=[
     {key:'encours',label:'⏳',sub:'En cours',color:'#7f8c8d',fn:function(b){return b.statut!=='termine';}},
@@ -926,6 +938,21 @@ function flush(){
 }
 function autoSave(){flush();var b=budgets.find(function(x){return x.id===curId;});if(b)document.getElementById('htitle').textContent=b.client||'Nouveau budget';save();}
 
+function dupBudget(){
+  flush();
+  var b=budgets.find(function(x){return x.id===curId;});
+  if(!b)return;
+  var copy=JSON.parse(JSON.stringify(b));
+  copy.id=gid();
+  copy.client=(b.client||'')+(b.client?' (copie)':'copie');
+  copy.statut='encours';
+  copy.createdAt=Date.now();
+  copy.updatedAt=Date.now();
+  budgets.push(copy);
+  save();
+  alert('Budget dupliqué !');
+  toList();
+}
 function delBudget(){if(!curId||!confirm('Supprimer ce budget ?'))return;budgets=budgets.filter(function(x){return x.id!==curId;});save();curId=null;toList();}
 
 function importData(input){
@@ -957,7 +984,10 @@ function exportAllPDF(){
   var pw=doc.internal.pageSize.getWidth();
   var co=loadCo();
   var coLine=(co.nom||'Newflash SA')+' · '+(co.addr||'Case postale 1290, 1260 Nyon')+' · '+(co.tel||'079 489 16 39')+' · '+(co.email||'info@agpeinture.ch');
+  var searchEl=document.getElementById('search-budgets');
+  var sq=searchEl?searchEl.value.toLowerCase():'';
   var sorted=budgets.slice().sort(function(a,b){return(b.updatedAt||b.id)-(a.updatedAt||a.id);});
+  if(sq)sorted=sorted.filter(function(b){return(b.client||'').toLowerCase().includes(sq)||(b.chantier||'').toLowerCase().includes(sq);});
   var firstPage=true;
 
   sorted.forEach(function(b){
