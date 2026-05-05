@@ -227,7 +227,7 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Helvetic
           </div>
         </div>
         <div class="set-fields">
-          <div class="frow"><label>Nom de la société</label><input class="finput sm" id="co-nom" placeholder="AG Peinture" oninput="saveCo()"></div>
+          <div class="frow"><label>Nom de la société</label><input class="finput sm" id="co-nom" placeholder="Newflash SA" oninput="saveCo()"></div>
           <div class="frow"><label>Adresse</label><input class="finput sm" id="co-addr" placeholder="Case postale 1290, 1260 Nyon" oninput="saveCo()"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div class="frow"><label>Téléphone</label><input class="finput sm" id="co-tel" placeholder="079 489 16 39" oninput="saveCo()"></div>
@@ -925,9 +925,9 @@ function exportAllPDF(){
   var co=loadCo();
   var coLine=(co.nom||'AG Peinture')+' · '+(co.addr||'1260 Nyon')+' · '+(co.tel||'079 489 16 39');
   var cats=[
-    {label:'🟢 BONNE MARGE (≥ 10%)',color:[39,174,96],fn:function(m){return m>=10;}},
-    {label:'🟠 MOYEN (0 – 9%)',color:[243,156,18],fn:function(m){return m>=0&&m<10;}},
-    {label:'🔴 PERTE (< 0%)',color:[231,76,60],fn:function(m){return m<0;}}
+    {label:'BONNE MARGE (>= 10%)',color:[39,174,96],fn:function(m){return m>=10;}},
+    {label:'MOYEN (0 - 9%)',color:[243,156,18],fn:function(m){return m>=0&&m<10;}},
+    {label:'PERTE (< 0%)',color:[231,76,60],fn:function(m){return m<0;}}
   ];
   var sorted=budgets.slice().sort(function(a,b){return(b.updatedAt||b.id)-(a.updatedAt||a.id);});
   var firstPage=true;
@@ -947,24 +947,24 @@ function exportAllPDF(){
       if(b.notes){
         doc.setFillColor(248,249,250);doc.roundedRect(14,y,pw-28,8,2,2,'F');
         doc.setTextColor(100,100,100);doc.setFontSize(7.5);doc.setFont('helvetica','italic');
-        doc.text('💬 '+b.notes,18,y+5.5);y+=12;
+        doc.text(''+b.notes,18,y+5.5);y+=12;
       }
       function sec(lbl,rgb){doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.rect(14,y,pw-28,5.5,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.text(lbl,17,y+4);y+=7;}
       function row(l,r){doc.setTextColor(26,35,50);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.text(l,17,y);if(r!=null)doc.text(r,pw-14,y,{align:'right'});y+=4.5;}
       function tot(l,r,p){doc.setDrawColor(200,200,200);doc.line(14,y,pw-14,y);y+=1;doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(26,35,50);doc.text(l,17,y+3.5);if(p!=null){doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(120,120,120);doc.text('('+p.toFixed(0)+'% du devis)',pw-48,y+3.5);}doc.setTextColor(26,35,50);doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.text(r,pw-14,y+3.5,{align:'right'});y+=8;}
-      sec('💰 REVENUS',[41,128,185]);row('Devis HT','CHF '+c.devis.toFixed(2));
+      sec('REVENUS',[41,128,185]);row('Devis HT','CHF '+c.devis.toFixed(2));
       (b.revExtras||[]).forEach(function(l){if(l.desc||l.montant)row(l.desc||'Autre','CHF '+(l.montant||0).toFixed(2));});
       tot('REVENUS TOTAUX','CHF '+c.rev.toFixed(2),null);y+=1;
-      sec("👷 OUVRIERS",[39,174,96]);
+      sec("OUVRIERS",[39,174,96]);
       var hasH=(b.lignesMO||[]).filter(function(l){return l.heures;}).length;
       if(!hasH)row('Aucun ouvrier',null);
       else(b.lignesMO||[]).forEach(function(l){if(l.heures)row((l.nom||'—')+'  ('+l.heures+'h × '+l.tauxH+' CHF/h)','CHF '+((+l.heures||0)*(+l.tauxH||0)).toFixed(2));});
       tot('TOTAL OUVRIERS','CHF '+c.mo.toFixed(2),c.pmo);y+=1;
-      sec('🪣 MATÉRIEL',[230,126,34]);
+      sec('MATERIEL',[230,126,34]);
       if(!(b.lignesMat||[]).length)row('Aucun matériel',null);
       else(b.lignesMat||[]).forEach(function(l){if(l.desc||l.montant)row(l.desc||'—','CHF '+(l.montant||0).toFixed(2));});
       tot('TOTAL MATÉRIEL','CHF '+c.mat.toFixed(2),c.pmat);y+=1;
-      if((b.lignesST||[]).length){sec('🤝 SOUS-TRAITANCE',[142,68,173]);(b.lignesST||[]).forEach(function(l){if(l.desc||l.montant)row(l.desc||'—','CHF '+(l.montant||0).toFixed(2));});tot('TOTAL SOUS-TRAITANCE','CHF '+c.st.toFixed(2),c.pst);y+=1;}
+      if((b.lignesST||[]).length){sec('SOUS-TRAITANCE',[142,68,173]);(b.lignesST||[]).forEach(function(l){if(l.desc||l.montant)row(l.desc||'—','CHF '+(l.montant||0).toFixed(2));});tot('TOTAL SOUS-TRAITANCE','CHF '+c.st.toFixed(2),c.pst);y+=1;}
       // Résultat
       var rcol=cat.color;
       doc.setFillColor(rcol[0],rcol[1],rcol[2]);doc.roundedRect(14,y,pw-28,22,4,4,'F');
@@ -987,41 +987,138 @@ function genPDF(){
   var b=budgets.find(function(x){return x.id===curId;});if(!b){alert('Pas de budget.');return;}
   var J=window.jspdf?window.jspdf.jsPDF:(typeof jsPDF!=='undefined'?jsPDF:null);if(!J){alert('PDF non disponible.');return;}
   var doc=new J({orientation:'portrait',unit:'mm',format:'a4'});
-  var c=calcB(b);var pw=doc.internal.pageSize.getWidth();var y=16;
-  doc.setFillColor(61,184,212);doc.roundedRect(14,y,pw-28,18,4,4,'F');
-  doc.setTextColor(255,255,255);doc.setFontSize(14);doc.setFont('helvetica','bold');
-  doc.text('BUDGET CHANTIER',pw/2,y+8,{align:'center'});
-  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('Suivi rentabilité · AG Peinture',pw/2,y+13,{align:'center'});y+=22;
-  doc.setFillColor(248,249,250);doc.roundedRect(14,y,pw-28,14,3,3,'F');
-  doc.setTextColor(26,35,50);doc.setFontSize(9);doc.setFont('helvetica','bold');
-  doc.text('CLIENT : '+(b.client||'—'),18,y+5);doc.text('CHANTIER : '+(b.chantier||'—'),18,y+10);
-  var nd=new Date();doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(120,120,120);
-  doc.text('Établi le '+pad2(nd.getDate())+'.'+pad2(nd.getMonth()+1)+'.'+nd.getFullYear(),pw-14,y+5,{align:'right'});y+=18;
-  function sec(lbl,rgb){doc.setFillColor(rgb[0],rgb[1],rgb[2]);doc.rect(14,y,pw-28,6,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(lbl,17,y+4.5);y+=8;}
-  function row(l,r){doc.setTextColor(26,35,50);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(l,17,y);if(r!=null)doc.text(r,pw-14,y,{align:'right'});y+=4.5;}
-  function tot(l,r,p){doc.setDrawColor(200,200,200);doc.line(14,y,pw-14,y);y+=1;doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);doc.text(l,17,y+4);if(p!=null){doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(100,100,100);doc.text('('+p.toFixed(0)+'% du devis)',pw-50,y+4);}doc.setTextColor(26,35,50);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text(r,pw-14,y+4,{align:'right'});y+=9;}
-  sec('💰 REVENUS',[41,128,185]);row('Devis HT','CHF '+c.devis.toFixed(2));
-  (b.revExtras||[]).forEach(function(l){if(l.desc||l.montant)row(l.desc||'Autre','CHF '+(l.montant||0).toFixed(2));});
-  tot('REVENUS TOTAUX','CHF '+c.rev.toFixed(2),null);y+=2;
-  sec("👷 OUVRIERS",[39,174,96]);
-  if(!b.lignesMO||!b.lignesMO.filter(function(l){return l.heures;}).length)row('Aucun ouvrier',null);
-  else b.lignesMO.forEach(function(l){if(l.heures)row((l.nom||'—')+'  ('+l.heures+'h × '+l.tauxH+' CHF/h)','CHF '+((+l.heures||0)*(+l.tauxH||0)).toFixed(2));});
-  tot('TOTAL OUVRIERS','CHF '+c.mo.toFixed(2),c.pmo);y+=2;
-  sec('🪣 MATÉRIEL',[230,126,34]);
-  if(!b.lignesMat||!b.lignesMat.length)row('Aucun matériel',null);
-  else b.lignesMat.forEach(function(l){if(l.desc||l.montant)row(l.desc||'—','CHF '+(l.montant||0).toFixed(2));});
-  tot('TOTAL MATÉRIEL','CHF '+c.mat.toFixed(2),c.pmat);y+=2;
-  if(b.lignesST&&b.lignesST.length){sec('🤝 SOUS-TRAITANCE',[142,68,173]);b.lignesST.forEach(function(l){if(l.desc||l.montant)row(l.desc||'—','CHF '+(l.montant||0).toFixed(2));});tot('TOTAL SOUS-TRAITANCE','CHF '+c.st.toFixed(2),c.pst);y+=2;}
-  var rcol=c.marge<0?[231,76,60]:c.marge<10?[243,156,18]:[39,174,96];
-  doc.setFillColor(rcol[0],rcol[1],rcol[2]);doc.roundedRect(14,y,pw-28,30,4,4,'F');
-  doc.setTextColor(255,255,255);doc.setFontSize(24);doc.setFont('helvetica','bold');
-  doc.text('MARGE : '+c.marge.toFixed(1)+'%',pw/2,y+12,{align:'center'});
-  doc.setFontSize(9);doc.setFont('helvetica','normal');
-  doc.text(c.marge<0?'🔴 PERTE':c.marge<10?'🟠 MOYEN (0–9%)':'🟢 TOP (≥ 10%)',pw/2,y+19,{align:'center'});
-  doc.setFontSize(12);doc.setFont('helvetica','bold');
-  doc.text('Argent restant : CHF '+c.argent.toFixed(2),pw/2,y+27,{align:'center'});
+  var c=calcB(b);
+  var pw=doc.internal.pageSize.getWidth();
+  var y=14;
+
+  // Logo petit en haut gauche
+  try{doc.addImage(LOGO_URI,'PNG',14,y-6,22,13);}catch(e){}
+
+  // Titre
+  doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(26,35,50);
+  doc.text('BUDGET CHANTIER',40,y+1);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);
+  doc.text('Rentabilite - AG Peinture',40,y+7);
+  var nd=new Date();
+  doc.text(pad2(nd.getDate())+'.'+pad2(nd.getMonth()+1)+'.'+nd.getFullYear(),pw-14,y+1,{align:'right'});
+
+  // Ligne header
+  y+=11;doc.setDrawColor(26,35,50);doc.setLineWidth(0.8);doc.line(14,y,pw-14,y);y+=6;
+
+  // Client / Chantier
+  doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(127,140,141);
+  doc.text('CLIENT',14,y);doc.text('CHANTIER',pw/2,y);
+  y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(26,35,50);
+  doc.text(b.client||'—',14,y);doc.text(b.chantier||'—',pw/2,y);
+  y+=4;
+  doc.setDrawColor(220,228,232);doc.setLineWidth(0.4);doc.line(14,y,pw-14,y);y+=6;
+
+  // Fonctions helpers
+  function hline(){doc.setDrawColor(245,247,250);doc.setLineWidth(0.3);doc.line(14,y,pw-14,y);}
+  function sepline(){doc.setDrawColor(220,228,232);doc.setLineWidth(0.5);doc.line(14,y-1,pw-14,y-1);}
+
+  function sec(lbl){
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(127,140,141);
+    doc.text(lbl,14,y);y+=6;
+  }
+
+  function rowRevenu(lbl,val,sub){
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(26,35,50);
+    doc.text(lbl,14,y);
+    doc.setFont('helvetica','bold');
+    doc.text('CHF '+val.toFixed(2),pw-14,y,{align:'right'});
+    if(sub){y+=4.5;doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(127,140,141);doc.text(sub,16,y);y+=2.5;}
+    else{y+=2;}
+    hline();y+=5;
+  }
+
+  function rowCout(lbl,val,pct,sub){
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(26,35,50);
+    doc.text(lbl,14,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);
+    doc.text(pct.toFixed(1)+'%',pw-30,y,{align:'right'});
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(26,35,50);
+    doc.text('CHF '+val.toFixed(2),pw-14,y,{align:'right'});
+    if(sub){y+=4.5;doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(127,140,141);doc.text(sub,16,y);y+=2.5;}
+    else{y+=2;}
+    hline();y+=5;
+  }
+
+  function totLine(lbl,val,pct){
+    sepline();
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);
+    doc.text(lbl,14,y+4);
+    if(pct!==null){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(pct.toFixed(1)+'%',pw-30,y+4,{align:'right'});}
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);
+    doc.text('CHF '+val.toFixed(2),pw-14,y+4,{align:'right'});
+    y+=10;
+  }
+
+  // REVENUS — sans %
+  sec('REVENUS');
+  rowRevenu('Devis HT',c.devis,null);
+  (b.revExtras||[]).forEach(function(l){if(l.desc||l.montant)rowRevenu(l.desc||'Extra',(l.montant||0),null);});
+  totLine('TOTAL REVENUS',c.rev,null);
+  y+=4;
+
+  // OUVRIERS — avec %
+  sec("MAIN D'OEUVRE");
+  if(!b.lignesMO||!b.lignesMO.filter(function(l){return l.heures;}).length){
+    rowCout('Aucun ouvrier',0,0,null);
+  } else {
+    b.lignesMO.forEach(function(l){
+      if(l.heures){
+        var v=(l.heures||0)*(l.tauxH||0);
+        var p=c.rev>0?v/c.rev*100:0;
+        rowCout(l.nom||'Ouvrier',v,p,l.heures+'h x '+l.tauxH+' CHF/h');
+      }
+    });
+  }
+  totLine('TOTAL OUVRIERS',c.mo,c.pmo);y+=4;
+
+  // MATERIEL — avec %
+  sec('MATERIEL');
+  if(!b.lignesMat||!b.lignesMat.filter(function(l){return l.montant;}).length){
+    rowCout('Aucun materiel',0,0,null);
+  } else {
+    b.lignesMat.forEach(function(l){if(l.montant)rowCout(l.desc||'Materiel',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
+  }
+  totLine('TOTAL MATERIEL',c.mat,c.pmat);y+=4;
+
+  // SOUS-TRAITANCE — avec %
+  if(b.lignesST&&b.lignesST.filter(function(l){return l.montant;}).length){
+    sec('SOUS-TRAITANCE');
+    b.lignesST.forEach(function(l){if(l.montant)rowCout(l.desc||'Sous-traitance',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
+    totLine('TOTAL SOUS-TRAITANCE',c.st||0,c.pst||0);y+=4;
+  }
+
+  // RECAP FINAL
+  y+=4;
+  doc.setDrawColor(26,35,50);doc.setLineWidth(0.8);doc.line(14,y,pw-14,y);y+=6;
+
+  // Cout total
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text('COUT TOTAL',14,y+3);
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);
+  doc.text('CHF '+c.cout.toFixed(2),pw-14,y+3,{align:'right'});
+  y+=9;
+
+  // Marge
+  var mc=c.marge<0?[231,76,60]:c.marge<10?[243,156,18]:[39,174,96];
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text('MARGE',14,y+4);
+  doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(mc[0],mc[1],mc[2]);
+  doc.text(c.marge.toFixed(1)+'%',70,y+5);
+  doc.setFontSize(8);doc.text(c.marge<0?'PERTE':c.marge<10?'MOYEN (0-9%)':'TOP (>= 10%)',90,y+5);
+  doc.setFontSize(9);doc.text('CHF '+c.argent.toFixed(2),pw-14,y+3,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(127,140,141);
+  doc.text('Argent restant',pw-14,y+9,{align:'right'});
+  y+=16;
+
+  doc.setDrawColor(26,35,50);doc.setLineWidth(0.8);doc.line(14,y,pw-14,y);
+
+  // Footer
   var co=loadCo();
-  var coLine=(co.nom||'AG Peinture')+' · '+(co.addr||'Case postale 1290, 1260 Nyon')+' · '+(co.tel||'079 489 16 39')+' · '+(co.email||'info@agpeinture.ch');
+  var coLine=(co.nom||'Newflash SA')+' · '+(co.addr||'Case postale 1290, 1260 Nyon')+' · '+(co.tel||'079 489 16 39')+' · '+(co.email||'info@agpeinture.ch');
   doc.setTextColor(160,160,160);doc.setFont('helvetica','normal');doc.setFontSize(6.5);
   doc.text(coLine,pw/2,292,{align:'center'});
   doc.save(((b.client||'budget')+'_'+(b.chantier||'')).replace(/[^a-zA-Z0-9_-]/g,'_').substring(0,40)+'.pdf');
