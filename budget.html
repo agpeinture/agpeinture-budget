@@ -436,6 +436,13 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Helvetic
       </div>
     </div>
   </div>
+
+  <!-- Years recap view -->
+  <div id="vyears" style="display:none">
+    <div class="content">
+      <div id="years-list"></div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -551,7 +558,7 @@ function calcB(b){
 }
 
 // REFRESH
-window.refreshApp2=function(){load();if(curView==='edit'&&curId){var b=budgets.find(function(x){return x.id===curId;});if(b)renderEdit(b);else toList();}else if(curView==='workers'){renderGWorkers();}else toList();};
+window.refreshApp2=function(){load();if(curView==='edit'&&curId){var b=budgets.find(function(x){return x.id===curId;});if(b)renderEdit(b);else toList();}else if(curView==='workers'){renderGWorkers();}else if(curView==='years'){renderYears();}else toList();};
 
 // ===== LIST =====
 function toList(){
@@ -559,20 +566,31 @@ function toList(){
   document.getElementById('vlist').style.display='block';
   document.getElementById('vworkers').style.display='none';
   document.getElementById('vedit').style.display='none';
+  document.getElementById('vyears').style.display='none';
   document.getElementById('htitle').textContent='Budget Chantier';
-  document.getElementById('hbtns').innerHTML='<button class="hbtn ghost" onclick="toWorkers()">⚙️ Paramètres</button><button class="hbtn" onclick="newBudget()">+ Nouveau</button>';
+  document.getElementById('hbtns').innerHTML='<button class="hbtn ghost" onclick="toYears()">📊 Bilan</button><button class="hbtn ghost" onclick="toWorkers()">⚙️</button><button class="hbtn" onclick="newBudget()">+ Nouveau</button>';
   renderList();
 }
 
-function renderDash(){
+function renderDash(filteredBudgets, periodLabel){
   var el=document.getElementById('dash-wrap');
-  if(!budgets.length){el.innerHTML='';return;}
-  var tot=budgets.length,top=0,med=0,perte=0,totalRev=0,totalArgent=0;
-  budgets.forEach(function(b){var c=calcB(b);totalRev+=c.rev;totalArgent+=c.argent;if(c.marge>=10)top++;else if(c.marge>=0)med++;else perte++;});
+  // Si pas de paramètre, on utilise tous les budgets (compatibilité)
+  var list = filteredBudgets || budgets;
+  var label = periodLabel || '📊 Récapitulatif global';
+  if(!list.length){el.innerHTML='';return;}
+  var tot=list.length,top=0,med=0,perte=0,totalRev=0,totalArgent=0;
+  list.forEach(function(b){var c=calcB(b);totalRev+=c.rev;totalArgent+=c.argent;if(c.marge>=10)top++;else if(c.marge>=0)med++;else perte++;});
   var margeGlob=totalRev>0?(totalArgent/totalRev*100):0;
   var col=colMarge(margeGlob);
+  // Verdict global selon la marge moyenne
+  var verdict = '';
+  if(totalRev>0){
+    if(margeGlob>=10) verdict='🟢 Période rentable';
+    else if(margeGlob>=0) verdict='🟠 Période juste rentable';
+    else verdict='🔴 Période en perte';
+  }
   el.innerHTML='<div class="dash">'
-    +'<div class="dash-title">📊 Récapitulatif global · '+tot+' budget'+(tot>1?'s':'')+'</div>'
+    +'<div class="dash-title">'+label+' · '+tot+' budget'+(tot>1?'s':'')+(verdict?' · '+verdict:'')+'</div>'
     +'<div class="dash-row">'
       +'<div class="dash-col" style="background:var(--green)"><div class="dval">'+top+'</div><div class="dlbl">🟢 ≥ 10%</div></div>'
       +'<div class="dash-col" style="background:var(--orange)"><div class="dval">'+med+'</div><div class="dlbl">🟠 0–9%</div></div>'
@@ -604,35 +622,64 @@ function renderList(){
     {key:'bad',label:'🔴',sub:'Perte',color:'#e74c3c',fn:function(b){return b.statut==='termine'&&calcB(b).marge<0;}}
   ];
 
-  // Build period selector (months with budgets)
-  var periods=[];
+  // Build period selector : années + mois disponibles dans les budgets
+  var years=[];      // ex: ['2026','2025']
+  var months=[];     // ex: [{key:'2026-05', lbl:'mai 2026'}, ...]
   sorted.forEach(function(b){
     var d=new Date(b.createdAt||b.id);
-    var key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-    var lbl=d.toLocaleDateString('fr-CH',{month:'long',year:'numeric'});
-    if(!periods.find(function(p){return p.key===key;}))periods.push({key:key,lbl:lbl});
+    var yKey=String(d.getFullYear());
+    var mKey=yKey+'-'+String(d.getMonth()+1).padStart(2,'0');
+    var mLbl=d.toLocaleDateString('fr-CH',{month:'long',year:'numeric'});
+    if(years.indexOf(yKey)<0) years.push(yKey);
+    if(!months.find(function(p){return p.key===mKey;})) months.push({key:mKey,lbl:mLbl});
   });
-  periods.sort(function(a,b){return b.key.localeCompare(a.key);});
+  // Tri décroissant (plus récent d'abord)
+  years.sort(function(a,b){return b.localeCompare(a);});
+  months.sort(function(a,b){return b.key.localeCompare(a.key);});
 
-  var periodBar='';
-  if(periods.length>1){
-    periodBar='<div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">'
-      +'<div onclick="setPeriod(null)" style="flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid '+(activePeriod===null?'var(--brand)':'var(--border)')+';background:'+(activePeriod===null?'var(--brand)':'white')+';color:'+(activePeriod===null?'white':'var(--muted)')+'">Tout</div>'
-      +periods.map(function(p){
-        var active=activePeriod===p.key;
-        return'<div onclick="setPeriod(\''+p.key+'\')" style="flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid '+(active?'var(--brand)':' var(--border)')+';background:'+(active?'var(--brand)':' white')+';color:'+(active?'white':'var(--muted)')+'">'+ p.lbl+'</div>';
-      }).join('')
-      +'</div>';
+  function periodChip(key, label){
+    var active = activePeriod === key || (key === null && activePeriod === null);
+    var keyAttr = key === null ? 'null' : "'" + key + "'";
+    return '<div onclick="setPeriod('+keyAttr+')" style="flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid '+(active?'var(--brand)':'var(--border)')+';background:'+(active?'var(--brand)':'white')+';color:'+(active?'white':'var(--muted)')+'">'+label+'</div>';
   }
 
-  // Filter by period
+  var periodBar='';
+  // Affiche la barre dès qu'on a au moins 2 mois de données (sinon ça sert à rien)
+  if(months.length>1){
+    var chips=[ periodChip(null, 'Tout') ];
+    // Si plusieurs années, on propose le filtre par année en premier
+    if(years.length>1){
+      years.forEach(function(y){ chips.push(periodChip(y, '📅 '+y)); });
+    }
+    // Puis les mois
+    months.forEach(function(p){ chips.push(periodChip(p.key, p.lbl)); });
+    periodBar='<div style="display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">'+chips.join('')+'</div>';
+  }
+
+  // Filter by period (supporte YYYY = année entière, YYYY-MM = mois précis)
   if(activePeriod){
     sorted=sorted.filter(function(b){
       var d=new Date(b.createdAt||b.id);
-      var key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-      return key===activePeriod;
+      var yKey=String(d.getFullYear());
+      var mKey=yKey+'-'+String(d.getMonth()+1).padStart(2,'0');
+      // Si filtre = année (4 chars) → match sur l'année
+      // Si filtre = mois (7 chars) → match sur le mois
+      return activePeriod===yKey || activePeriod===mKey;
     });
   }
+
+  // Construire le label de période et afficher le récap (qui suit le filtre actif)
+  var dashLabel = '📊 Récapitulatif global';
+  if(activePeriod){
+    if(activePeriod.length===4){
+      dashLabel = '📊 Année ' + activePeriod;
+    } else {
+      // YYYY-MM → on retrouve le label "mai 2026" depuis la liste months déjà construite
+      var foundMonth = months.find(function(m){return m.key===activePeriod;});
+      dashLabel = '📊 ' + (foundMonth ? foundMonth.lbl.charAt(0).toUpperCase()+foundMonth.lbl.slice(1) : activePeriod);
+    }
+  }
+  renderDash(sorted, dashLabel);
 
   var pills=periodBar+'<div style="display:flex;gap:7px;margin-bottom:14px">'
     +cats.map(function(cat){
@@ -651,7 +698,8 @@ function renderList(){
     ?sorted.filter(cats.find(function(c){return c.key===activeFilter;}).fn)
     :sorted;
 
-  var cards=filtered.length?filtered.map(function(b){
+  // Helper : rendu d'une carte budget
+  function renderCard(b){
     var c=calcB(b);
     var termine=b.statut==='termine';
     var col=termine?colMarge(c.marge):'#95a5a6';
@@ -674,7 +722,63 @@ function renderList(){
         +noteSnippet
       +'</div>'
       +'</div>';
-  }).join(''):'<div style="text-align:center;padding:24px;font-size:13px;color:var(--muted);background:white;border-radius:12px;border:1px solid var(--border)">Aucun chantier ici</div>';
+  }
+
+  // Helper : en-tête de section année avec mini-récap
+  function renderYearHeader(year, yearBudgets){
+    var totalRev=0, totalArgent=0, ntop=0, nmed=0, nperte=0;
+    yearBudgets.forEach(function(b){
+      var c=calcB(b);
+      totalRev+=c.rev; totalArgent+=c.argent;
+      if(c.marge>=10) ntop++;
+      else if(c.marge>=0) nmed++;
+      else nperte++;
+    });
+    var marge = totalRev>0 ? (totalArgent/totalRev*100) : 0;
+    var col = colMarge(marge);
+    var verdict = '';
+    if(totalRev>0){
+      if(marge>=10) verdict='🟢';
+      else if(marge>=0) verdict='🟠';
+      else verdict='🔴';
+    }
+    var n = yearBudgets.length;
+    return '<div style="display:flex;align-items:center;gap:10px;margin:18px 0 8px;padding:10px 14px;background:linear-gradient(135deg,'+col+'15 0%,'+col+'08 100%);border-left:4px solid '+col+';border-radius:10px">'
+      +'<div style="font-size:20px;font-weight:900;color:'+col+'">'+verdict+' '+year+'</div>'
+      +'<div style="flex:1;font-size:11px;color:var(--muted);font-weight:600">'+n+' budget'+(n>1?'s':'')+' · '+chf(totalRev)+(totalRev>0?' · marge '+marge.toFixed(1)+'%':'')+'</div>'
+      +'<div style="display:flex;gap:4px;font-size:10px;font-weight:700">'
+        +(ntop>0?'<span style="background:var(--green);color:white;padding:2px 6px;border-radius:8px">🟢 '+ntop+'</span>':'')
+        +(nmed>0?'<span style="background:var(--orange);color:white;padding:2px 6px;border-radius:8px">🟠 '+nmed+'</span>':'')
+        +(nperte>0?'<span style="background:var(--red);color:white;padding:2px 6px;border-radius:8px">🔴 '+nperte+'</span>':'')
+      +'</div>'
+    +'</div>';
+  }
+
+  // Grouper les budgets par année (ordre décroissant : année récente en premier)
+  var byYear = {};
+  filtered.forEach(function(b){
+    var d=new Date(b.createdAt||b.id);
+    var y=d.getFullYear();
+    if(!byYear[y]) byYear[y]=[];
+    byYear[y].push(b);
+  });
+  var yearKeys = Object.keys(byYear).sort(function(a,b){return parseInt(b)-parseInt(a);});
+
+  var cards;
+  if(!filtered.length){
+    cards = '<div style="text-align:center;padding:24px;font-size:13px;color:var(--muted);background:white;border-radius:12px;border:1px solid var(--border)">Aucun chantier ici</div>';
+  } else if(yearKeys.length===1){
+    // Une seule année : pas besoin d'en-tête de groupe (sauf si filtre période actif)
+    cards = filtered.map(renderCard).join('');
+    if(activePeriod && activePeriod.length===4){
+      cards = renderYearHeader(yearKeys[0], byYear[yearKeys[0]]) + cards;
+    }
+  } else {
+    // Plusieurs années : on regroupe avec en-têtes
+    cards = yearKeys.map(function(y){
+      return renderYearHeader(y, byYear[y]) + byYear[y].map(renderCard).join('');
+    }).join('');
+  }
 
   el.innerHTML=pills+'<div style="display:flex;flex-direction:column;gap:8px">'+cards+'</div>';
 }
@@ -682,6 +786,80 @@ function renderList(){
 function setFilter(key){
   activeFilter=activeFilter===key?null:key;
   renderList();
+}
+
+// Filtre par période : key = null (tout) | "2026" (année) | "2026-05" (mois)
+// Re-cliquer sur la même période la désactive (toggle).
+function setPeriod(key){
+  activePeriod = (activePeriod === key) ? null : key;
+  renderList();
+}
+
+// ===== BILAN ANNUEL =====
+function toYears(){
+  curView='years';
+  document.getElementById('vlist').style.display='none';
+  document.getElementById('vworkers').style.display='none';
+  document.getElementById('vedit').style.display='none';
+  document.getElementById('vyears').style.display='block';
+  document.getElementById('htitle').textContent='Bilan annuel';
+  document.getElementById('hbtns').innerHTML='<button class="hbtn ghost" onclick="toList()">← Retour</button>';
+  renderYears();
+}
+
+function renderYears(){
+  var el=document.getElementById('years-list');
+  if(!budgets.length){
+    el.innerHTML='<div class="empty"><div class="ei">📊</div><p>Aucun bilan</p><span>Ajoute des budgets pour voir le bilan annuel</span></div>';
+    return;
+  }
+  // Grouper les budgets par année (basée sur createdAt)
+  var byYear={};
+  budgets.forEach(function(b){
+    var d=new Date(b.createdAt||b.id);
+    var y=d.getFullYear();
+    if(!byYear[y])byYear[y]=[];
+    byYear[y].push(b);
+  });
+  // Trier les années du plus récent au plus ancien
+  var years=Object.keys(byYear).map(Number).sort(function(a,b){return b-a;});
+
+  el.innerHTML=years.map(function(y){
+    var list=byYear[y];
+    var top=0,med=0,perte=0,totalRev=0,totalArgent=0;
+    list.forEach(function(b){
+      var c=calcB(b);
+      totalRev+=c.rev;totalArgent+=c.argent;
+      if(c.marge>=10)top++;
+      else if(c.marge>=0)med++;
+      else perte++;
+    });
+    var margeGlob=totalRev>0?(totalArgent/totalRev*100):0;
+    var col=colMarge(margeGlob);
+    var verdict='—',vCol=col;
+    if(totalRev>0){
+      if(margeGlob>=10){verdict='🟢 Année rentable';vCol='var(--green)';}
+      else if(margeGlob>=0){verdict='🟠 Année juste rentable';vCol='var(--orange)';}
+      else{verdict='🔴 Année en perte';vCol='var(--red)';}
+    }
+    return '<div class="dash" style="margin-bottom:14px;cursor:pointer" onclick="setPeriod(\''+y+'\');toList();">'
+      +'<div class="dash-title" style="display:flex;justify-content:space-between;align-items:center">'
+        +'<span>📅 Année '+y+' · '+list.length+' budget'+(list.length>1?'s':'')+'</span>'
+        +'<span style="font-size:12px;color:'+vCol+';font-weight:800">'+verdict+'</span>'
+      +'</div>'
+      +'<div class="dash-row">'
+        +'<div class="dash-col" style="background:var(--green)"><div class="dval">'+top+'</div><div class="dlbl">🟢 ≥ 10%</div></div>'
+        +'<div class="dash-col" style="background:var(--orange)"><div class="dval">'+med+'</div><div class="dlbl">🟠 0–9%</div></div>'
+        +'<div class="dash-col" style="background:var(--red)"><div class="dval">'+perte+'</div><div class="dlbl">🔴 Perte</div></div>'
+      +'</div>'
+      +'<div class="dash-stats">'
+        +'<div class="dstat"><div class="sv">'+chf(totalRev)+'</div><div class="sl">CA total</div></div>'
+        +'<div class="dstat" style="background:'+col+'20;border:1px solid '+col+'"><div class="sv" style="color:'+col+'">'+margeGlob.toFixed(1)+'%</div><div class="sl">Marge</div></div>'
+        +'<div class="dstat"><div class="sv" style="color:'+(totalArgent>=0?'var(--green)':'var(--red)')+'">'+chf(totalArgent)+'</div><div class="sl">Restant</div></div>'
+      +'</div>'
+    +'</div>';
+  }).join('')
+  +'<div style="text-align:center;font-size:12px;color:var(--muted);margin-top:8px;font-style:italic">💡 Tape sur une année pour voir le détail</div>';
 }
 
 function toggleCat(){}
@@ -692,6 +870,7 @@ function toWorkers(){
   document.getElementById('vlist').style.display='none';
   document.getElementById('vworkers').style.display='block';
   document.getElementById('vedit').style.display='none';
+  document.getElementById('vyears').style.display='none';
   document.getElementById('htitle').textContent='Paramètres';
   document.getElementById('hbtns').innerHTML='<button class="hbtn ghost" onclick="toList()">← Retour</button>';
   fillCoFields();
@@ -786,6 +965,7 @@ function renderEdit(b){
   document.getElementById('vlist').style.display='none';
   document.getElementById('vworkers').style.display='none';
   document.getElementById('vedit').style.display='block';
+  document.getElementById('vyears').style.display='none';
   document.getElementById('htitle').textContent=b.client||'Nouveau budget';
   document.getElementById('hbtns').innerHTML='<button class="hbtn ghost" onclick="flush();toList()">← Liste</button>';
   document.getElementById('f-client').value=b.client||'';
@@ -872,7 +1052,7 @@ function stLineHTML(desc,mnt){
 }
 function vehLineHTML(l,i){return'<div class="line-row veh-line"><select class="finput sm veh-cat" style="flex:1.2">'
     +['⛽ Essence','🛣️ Autoroute','🅿️ Parking','🔧 Entretien','🚿 Lavage','📦 Autre'].map(function(o){return'<option'+(l.cat===o?' selected':'')+'>'+o+'</option>';}).join('')
-    +'</select><input class="finput sm num veh-amt" type="number" placeholder="CHF" value="'+(l.montant||'')+'"><button class="btnrm" onclick="this.closest(\'.veh-line\').remove();calcLive()">×</button></div>';}
+    +'</select><input class="finput sm num veh-amt" type="number" placeholder="CHF" value="'+(l.montant||'')+'" oninput="calcAll()"><button class="btnrm" onclick="this.closest(\'.veh-line\').remove();calcAll()">×</button></div>';}
 function renderVehLines(b){document.getElementById('veh-lines').innerHTML=(b.lignesVeh||[]).map(function(l,i){return vehLineHTML(l,i);}).join('');}
 function addVehLine(){var c=document.getElementById('veh-lines');c.insertAdjacentHTML('beforeend',vehLineHTML({cat:'⛽ Essence',montant:''},c.children.length));}
 function renderSTLines(b){document.getElementById('st-lines').innerHTML=(b.lignesST||[]).map(function(l){return stLineHTML(l.desc,l.montant);}).join('');}
