@@ -1315,7 +1315,7 @@ function exportAllPDF(){
     function rowCout(lbl,val,pct,sub){
       doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(26,35,50);
       doc.text(lbl,14,y);
-      doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(pct.toFixed(1)+'%',pw-30,y,{align:'right'});
+      doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(Math.round(pct)+'%',pw-40,y,{align:'right'});
       doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(26,35,50);
       doc.text('CHF '+val.toFixed(2),pw-14,y,{align:'right'});
       if(sub){y+=4.5;doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(127,140,141);doc.text(sub,16,y);y+=2.5;}
@@ -1326,7 +1326,7 @@ function exportAllPDF(){
       sepline();
       doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);
       doc.text(lbl,14,y+4);
-      if(pct!==null){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(pct.toFixed(1)+'%',pw-30,y+4,{align:'right'});}
+      if(pct!==null){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(Math.round(pct)+'%',pw-40,y+4,{align:'right'});}
       doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);
       doc.text('CHF '+val.toFixed(2),pw-14,y+4,{align:'right'});
       y+=10;
@@ -1340,27 +1340,31 @@ function exportAllPDF(){
 
     // OUVRIERS
     sec("MAIN D'OEUVRE");
-    if(!(b.lignesMO||[]).filter(function(l){return l.heures;}).length){rowCout('Aucun ouvrier',0,0,null);}
-    else{(b.lignesMO||[]).forEach(function(l){if(l.heures){var v=(l.heures||0)*(l.tauxH||0);rowCout(l.nom||'Ouvrier',v,c.rev>0?v/c.rev*100:0,l.heures+'h x '+l.tauxH+' CHF/h');}});}
+    var moRows=(b.lignesMO||[]).filter(function(l){return l.nom||l.heures||l.tauxH;});
+    if(!moRows.length){rowCout('Aucun ouvrier',0,0,null);}
+    else{moRows.forEach(function(l){var v=(l.heures||0)*(l.tauxH||0);var sub=(l.heures||l.tauxH)?((l.heures||0)+'h x '+(l.tauxH||0)+' CHF/h'):null;rowCout(l.nom||'Ouvrier',v,c.rev>0?v/c.rev*100:0,sub);});}
     totLine('TOTAL OUVRIERS',c.mo,c.rev>0?c.mo/c.rev*100:0);y+=4;
 
     // MATERIEL
     sec('MATERIEL');
-    if(!(b.lignesMat||[]).filter(function(l){return l.montant;}).length){rowCout('Aucun materiel',0,0,null);}
-    else{(b.lignesMat||[]).forEach(function(l){if(l.montant)rowCout(l.desc||'Materiel',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});}
+    var matRows=(b.lignesMat||[]).filter(function(l){return l.desc||l.montant;});
+    if(!matRows.length){rowCout('Aucun materiel',0,0,null);}
+    else{matRows.forEach(function(l){rowCout(l.desc||'Materiel',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});}
     totLine('TOTAL MATERIEL',c.mat,c.rev>0?c.mat/c.rev*100:0);y+=4;
 
     // VEHICULE
-    if((b.lignesVeh||[]).filter(function(l){return l.montant;}).length){
+    var vehRows=(b.lignesVeh||[]).filter(function(l){return l.cat||l.montant;});
+    if(vehRows.length){
       sec('FRAIS VEHICULE');
-      (b.lignesVeh||[]).forEach(function(l){if(l.montant)rowCout(l.cat||'Vehicule',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
+      vehRows.forEach(function(l){rowCout(l.cat||'Vehicule',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
       totLine('TOTAL VEHICULE',c.veh,c.rev>0?c.veh/c.rev*100:0);y+=4;
     }
 
     // SOUS-TRAITANCE
-    if((b.lignesST||[]).filter(function(l){return l.montant;}).length){
+    var stRows=(b.lignesST||[]).filter(function(l){return l.desc||l.montant;});
+    if(stRows.length){
       sec('SOUS-TRAITANCE');
-      (b.lignesST||[]).forEach(function(l){if(l.montant)rowCout(l.desc||'Sous-traitance',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
+      stRows.forEach(function(l){rowCout(l.desc||'Sous-traitance',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
       totLine('TOTAL SOUS-TRAITANCE',c.st,c.rev>0?c.st/c.rev*100:0);y+=4;
     }
 
@@ -1442,7 +1446,7 @@ function genPDF(){
     doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(26,35,50);
     doc.text(lbl,14,y);
     doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);
-    doc.text(pct.toFixed(1)+'%',pw-30,y,{align:'right'});
+    doc.text(Math.round(pct)+'%',pw-40,y,{align:'right'});
     doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(26,35,50);
     doc.text('CHF '+val.toFixed(2),pw-14,y,{align:'right'});
     if(sub){y+=4.5;doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(127,140,141);doc.text(sub,16,y);y+=2.5;}
@@ -1454,7 +1458,7 @@ function genPDF(){
     sepline();
     doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);
     doc.text(lbl,14,y+4);
-    if(pct!==null){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(pct.toFixed(1)+'%',pw-30,y+4,{align:'right'});}
+    if(pct!==null){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(Math.round(pct)+'%',pw-40,y+4,{align:'right'});}
     doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);
     doc.text('CHF '+val.toFixed(2),pw-14,y+4,{align:'right'});
     y+=10;
@@ -1469,38 +1473,41 @@ function genPDF(){
 
   // OUVRIERS — avec %
   sec("MAIN D'OEUVRE");
-  if(!b.lignesMO||!b.lignesMO.filter(function(l){return l.heures;}).length){
+  var moRows=(b.lignesMO||[]).filter(function(l){return l.nom||l.heures||l.tauxH;});
+  if(!moRows.length){
     rowCout('Aucun ouvrier',0,0,null);
   } else {
-    b.lignesMO.forEach(function(l){
-      if(l.heures){
-        var v=(l.heures||0)*(l.tauxH||0);
-        var p=c.rev>0?v/c.rev*100:0;
-        rowCout(l.nom||'Ouvrier',v,p,l.heures+'h x '+l.tauxH+' CHF/h');
-      }
+    moRows.forEach(function(l){
+      var v=(l.heures||0)*(l.tauxH||0);
+      var p=c.rev>0?v/c.rev*100:0;
+      var sub=(l.heures||l.tauxH)?((l.heures||0)+'h x '+(l.tauxH||0)+' CHF/h'):null;
+      rowCout(l.nom||'Ouvrier',v,p,sub);
     });
   }
   totLine('TOTAL OUVRIERS',c.mo,c.rev>0?c.mo/c.rev*100:0);y+=4;
 
   // MATERIEL — avec %
   sec('MATERIEL');
-  if(!b.lignesMat||!b.lignesMat.filter(function(l){return l.montant;}).length){
+  var matRows=(b.lignesMat||[]).filter(function(l){return l.desc||l.montant;});
+  if(!matRows.length){
     rowCout('Aucun materiel',0,0,null);
   } else {
-    b.lignesMat.forEach(function(l){if(l.montant)rowCout(l.desc||'Materiel',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
+    matRows.forEach(function(l){rowCout(l.desc||'Materiel',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
   }
   totLine('TOTAL MATERIEL',c.mat,c.rev>0?c.mat/c.rev*100:0);y+=4;
 
   // FRAIS VEHICULE — avec %
-  if(b.lignesVeh&&b.lignesVeh.filter(function(l){return l.montant;}).length){
+  var vehRows=(b.lignesVeh||[]).filter(function(l){return l.cat||l.montant;});
+  if(vehRows.length){
     sec('FRAIS VEHICULE');
-    b.lignesVeh.forEach(function(l){if(l.montant)rowCout(l.cat||'Vehicule',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
+    vehRows.forEach(function(l){rowCout(l.cat||'Vehicule',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
     totLine('TOTAL VEHICULE',c.veh,c.rev>0?c.veh/c.rev*100:0);y+=4;
   }
   // SOUS-TRAITANCE — avec %
-  if(b.lignesST&&b.lignesST.filter(function(l){return l.montant;}).length){
+  var stRows=(b.lignesST||[]).filter(function(l){return l.desc||l.montant;});
+  if(stRows.length){
     sec('SOUS-TRAITANCE');
-    b.lignesST.forEach(function(l){if(l.montant)rowCout(l.desc||'Sous-traitance',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
+    stRows.forEach(function(l){rowCout(l.desc||'Sous-traitance',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
     totLine('TOTAL SOUS-TRAITANCE',c.st||0,c.rev>0?(c.st||0)/c.rev*100:0);y+=4;
   }
 
