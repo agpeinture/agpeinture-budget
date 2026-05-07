@@ -161,6 +161,10 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Helvetic
 /* Rev extra */
 .rev-extra{margin-top:8px;border-top:1px solid var(--border);padding-top:9px;}
 
+/* Avertissement visuel doublon */
+.dup-warn{position:relative;background:#fff4e0 !important;border-radius:8px;padding:3px 4px;margin-left:-4px;margin-right:-4px;box-shadow:inset 3px 0 0 var(--orange);}
+.dup-warn::after{content:"⚠ doublon";position:absolute;top:-7px;right:8px;font-size:9px;font-weight:700;color:white;background:var(--orange);padding:1px 6px;border-radius:8px;letter-spacing:.3px;}
+
 /* New pwd screen */
 .pwd-overlay{position:fixed;inset:0;background:linear-gradient(160deg,#1a2332 0%,#2c4a6b 100%);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:40px}
 .pwd-overlay img.pwd-logo{height:64px;width:auto;object-fit:contain;filter:drop-shadow(0 4px 20px rgba(61,184,212,0.4));margin-bottom:6px}
@@ -304,6 +308,15 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Helvetic
 
       <div class="scard">
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+
+          <button class="set-action-btn" onclick="dedupAllBudgets()">
+            <span>🧹</span>
+            <div>
+              <div class="sabt">Nettoyer les doublons</div>
+              <div class="sabs">Supprime les lignes en double (même nom + même montant) dans tous les budgets</div>
+            </div>
+            <span style="color:var(--muted);font-size:18px">›</span>
+          </button>
 
           <button class="set-action-btn" onclick="exportAllPDF()">
             <span>📄</span>
@@ -481,7 +494,19 @@ try{if(localStorage.getItem('agp_unlock_budget')==='ok'){document.getElementById
     window.fbSave2=function(){var d={_t:Date.now()};KS.forEach(function(k){d[k]=localStorage.getItem(k)||'';});fbs('☁️ Sauvegarde...','#f39c12');DOC.set(d).then(function(){fbs('☁️ Synchronisé','#27ae60');}).catch(function(e){fbs('⚠️ '+e.message,'#e74c3c');});};
     window.fbForceReload2=function(){fbs('☁️ Chargement...','#f39c12');DOC.get().then(function(doc){if(doc.exists){var d=doc.data();KS.forEach(function(k){if(d[k])localStorage.setItem(k,d[k]);});fbs('✅ Chargé !','#27ae60');window.refreshApp2&&window.refreshApp2();}else fbs('☁️ Aucune donnée','#f39c12');}).catch(function(e){fbs('⚠️ '+e.message,'#e74c3c');});};
     DOC.onSnapshot(function(doc){
-      if(doc.exists){var d=doc.data(),ch=false;KS.forEach(function(k){if(d[k]&&d[k]!==localStorage.getItem(k)){localStorage.setItem(k,d[k]);ch=true;}});fbs('☁️ Synchronisé','#27ae60');if(!started){started=true;window.refreshApp2&&window.refreshApp2();}else if(ch)window.refreshApp2&&window.refreshApp2();}
+      if(doc.exists){
+        var d=doc.data(),ch=false;
+        // ANTI-COURSE : si on est en train d'éditer un budget, on ne touche PAS au localStorage
+        // ni au DOM. La sync entrante est ignorée pendant l'édition pour éviter d'écraser
+        // ce que l'utilisateur est en train de taper. Elle reprendra au retour à la liste.
+        var inEdit=(typeof curView!=='undefined'&&curView==='edit');
+        if(!inEdit){
+          KS.forEach(function(k){if(d[k]&&d[k]!==localStorage.getItem(k)){localStorage.setItem(k,d[k]);ch=true;}});
+        }
+        fbs(inEdit?'✏️ Édition (sync en pause)':'☁️ Synchronisé',inEdit?'#7f8c8d':'#27ae60');
+        if(!started){started=true;window.refreshApp2&&window.refreshApp2();}
+        else if(ch)window.refreshApp2&&window.refreshApp2();
+      }
       else{fbs('☁️ Prêt','#27ae60');if(!started){started=true;window.refreshApp2&&window.refreshApp2();}}
     },function(e){fbs('⚠️ '+e.message,'#e74c3c');if(!started){started=true;window.refreshApp2&&window.refreshApp2();}});
     var _o=localStorage.setItem.bind(localStorage);
@@ -516,6 +541,48 @@ function load(){
   try{var w=JSON.parse(localStorage.getItem('agp_bworkers'));if(Array.isArray(w)&&w.length)gworkers=w;else gworkers=DEFAULT_GW.map(function(x){return Object.assign({},x);});}catch(e){gworkers=DEFAULT_GW.map(function(x){return Object.assign({},x);});}
 }
 function save(){localStorage.setItem('agp_budgets',JSON.stringify(budgets));localStorage.setItem('agp_bworkers',JSON.stringify(gworkers));}
+
+// === DÉDOUBLONNAGE ===
+// Règle : doublon = même nom (insensible à la casse, espaces ignorés) ET même montant exact (au centime près).
+// Si les montants diffèrent même de 0.01 CHF, on garde les deux lignes (cas de 2 factures distinctes du même fournisseur).
+function dedupBudget(b){
+  var removed=0;
+  function dedup(arr,keyFn){
+    if(!Array.isArray(arr))return{arr:[],removed:0};
+    var seen={},out=[],r=0;
+    arr.forEach(function(item){
+      var k=keyFn(item);
+      if(seen[k]){r++;return;}
+      seen[k]=true;out.push(item);
+    });
+    return{arr:out,removed:r};
+  }
+  var r;
+  r=dedup(b.lignesMat||[],function(l){return(l.desc||'').trim().toLowerCase()+'|'+(+l.montant||0).toFixed(2);});
+  b.lignesMat=r.arr;removed+=r.removed;
+  r=dedup(b.lignesST||[],function(l){return(l.desc||'').trim().toLowerCase()+'|'+(+l.montant||0).toFixed(2);});
+  b.lignesST=r.arr;removed+=r.removed;
+  r=dedup(b.lignesMO||[],function(l){return(l.nom||'').trim().toLowerCase()+'|'+(+l.heures||0)+'|'+(+l.tauxH||0);});
+  b.lignesMO=r.arr;removed+=r.removed;
+  r=dedup(b.lignesVeh||[],function(l){return(l.cat||'')+'|'+(+l.montant||0).toFixed(2);});
+  b.lignesVeh=r.arr;removed+=r.removed;
+  r=dedup(b.revExtras||[],function(l){return(l.desc||'').trim().toLowerCase()+'|'+(+l.montant||0).toFixed(2);});
+  b.revExtras=r.arr;removed+=r.removed;
+  return removed;
+}
+
+function dedupAllBudgets(){
+  if(!confirm('Analyser tous les budgets et supprimer les doublons (même nom + même montant) ?\n\nLes lignes avec des montants différents seront conservées.'))return;
+  var totalRemoved=0,budgetsTouched=0;
+  budgets.forEach(function(b){
+    var n=dedupBudget(b);
+    if(n>0){totalRemoved+=n;budgetsTouched++;b.updatedAt=Date.now();}
+  });
+  save();
+  if(totalRemoved===0)alert('✅ Aucun doublon trouvé. Tes budgets sont propres.');
+  else alert('✅ '+totalRemoved+' ligne'+(totalRemoved>1?'s':'')+' en double supprimée'+(totalRemoved>1?'s':'')+' dans '+budgetsTouched+' budget'+(budgetsTouched>1?'s':'')+'.');
+  if(curView==='list')renderList();
+}
 
 // Company info
 function loadCo(){
@@ -553,7 +620,7 @@ function calcB(b){
   var st=0;(b.lignesST||[]).forEach(function(l){st+=+l.montant||0;});
   var veh=0;(b.lignesVeh||[]).forEach(function(l){veh+=+l.montant||0;});
   var cout=mo+mat+st+veh;var argent=rev-cout;var marge=rev>0?(argent/rev*100):0;
-  var pmo=devis>0?(mo/devis*100):0,pmat=devis>0?(mat/devis*100):0,pst=devis>0?(st/devis*100):0,pveh=devis>0?(veh/devis*100):0;
+  var pmo=rev>0?(mo/rev*100):0,pmat=rev>0?(mat/rev*100):0,pst=rev>0?(st/rev*100):0,pveh=rev>0?(veh/rev*100):0;
   return{devis:devis,rev:rev,mo:mo,mat:mat,st:st,veh:veh,cout:cout,argent:argent,marge:marge,pmo:pmo,pmat:pmat,pst:pst,pveh:pveh};
 }
 
@@ -958,7 +1025,16 @@ function newBudget(){
   var b={id:gid(),client:'',chantier:'',statut:'encours',devisHT:0,revExtras:[],lignesMO:[],lignesMat:[],lignesST:[],lignesVeh:[],createdAt:Date.now(),updatedAt:Date.now()};
   budgets.push(b);save();curId=b.id;renderEdit(b);
 }
-function open1(id){curId=id;var b=budgets.find(function(x){return x.id===id;});if(b)renderEdit(b);}
+function open1(id){
+  curId=id;
+  var b=budgets.find(function(x){return x.id===id;});
+  if(b){
+    // Nettoyage silencieux des doublons à l'ouverture (filet de sécurité)
+    var n=dedupBudget(b);
+    if(n>0){b.updatedAt=Date.now();save();}
+    renderEdit(b);
+  }
+}
 
 function renderEdit(b){
   curView='edit';
@@ -1063,26 +1139,54 @@ function calcAll(){
   var devis=parseFloat(document.getElementById('f-devis').value)||0;
   var extras=0;document.querySelectorAll('.rev-mnt').forEach(function(i){extras+=parseFloat(i.value)||0;});
   var rev=devis+extras;
+  // Helper : détecte les doublons (même nom + même montant) et applique un style visuel
+  function markDuplicates(rows,getName,getValue){
+    var seen={},dups={};
+    rows.forEach(function(r){
+      var k=(getName(r)||'').trim().toLowerCase()+'|'+(getValue(r)||0).toFixed(2);
+      if(!getName(r)&&!getValue(r))return;// ligne vide, on ignore
+      if(seen[k])dups[k]=true;
+      seen[k]=true;
+    });
+    rows.forEach(function(r){
+      var k=(getName(r)||'').trim().toLowerCase()+'|'+(getValue(r)||0).toFixed(2);
+      if(dups[k])r.classList.add('dup-warn');
+      else r.classList.remove('dup-warn');
+    });
+  }
   var mo=0;
-  document.querySelectorAll('.mo-line').forEach(function(row){
+  var moRows=document.querySelectorAll('.mo-line');
+  moRows.forEach(function(row){
     var h=parseFloat(row.querySelector('.mo-h').value)||0;
     var t=parseFloat(row.querySelector('.mo-taux').value)||0;
     var tot=h*t;mo+=tot;
     row.querySelector('.mo-tot').textContent=chf(tot);
-    var p=row.querySelector('.mo-wpct');if(p)p.textContent=devis>0?(tot/devis*100).toFixed(0)+'%':'—';
+    var p=row.querySelector('.mo-wpct');if(p)p.textContent=rev>0?(tot/rev*100).toFixed(0)+'%':'—';
   });
+  markDuplicates(Array.prototype.slice.call(moRows),
+    function(r){return r.querySelector('.mo-name').value;},
+    function(r){var h=parseFloat(r.querySelector('.mo-h').value)||0;var t=parseFloat(r.querySelector('.mo-taux').value)||0;return h*t;});
   var mat=0;
-  document.querySelectorAll('.mat-line').forEach(function(row){
+  var matRows=document.querySelectorAll('.mat-line');
+  matRows.forEach(function(row){
     var mnt=parseFloat(row.querySelector('.mat-mnt').value)||0;mat+=mnt;
-    var p=row.querySelector('.mat-wpct');if(p)p.textContent=devis>0?(mnt/devis*100).toFixed(0)+'%':'—';
+    var p=row.querySelector('.mat-wpct');if(p)p.textContent=rev>0?(mnt/rev*100).toFixed(0)+'%':'—';
   });
+  markDuplicates(Array.prototype.slice.call(matRows),
+    function(r){return r.querySelector('.mat-desc').value;},
+    function(r){return parseFloat(r.querySelector('.mat-mnt').value)||0;});
   var st=0;
-  document.querySelectorAll('.st-line').forEach(function(row){
+  var stRows=document.querySelectorAll('.st-line');
+  stRows.forEach(function(row){
     var mnt=parseFloat(row.querySelector('.st-mnt').value)||0;st+=mnt;
-    var p=row.querySelector('.st-wpct');if(p)p.textContent=devis>0?(mnt/devis*100).toFixed(0)+'%':'—';
+    var p=row.querySelector('.st-wpct');if(p)p.textContent=rev>0?(mnt/rev*100).toFixed(0)+'%':'—';
   });
+  markDuplicates(Array.prototype.slice.call(stRows),
+    function(r){return r.querySelector('.st-desc').value;},
+    function(r){return parseFloat(r.querySelector('.st-mnt').value)||0;});
   var cout=mo+mat+st,argent=rev-cout,marge=rev>0?(argent/rev*100):0;
-  var pmo=devis>0?(mo/devis*100):0,pmat=devis>0?(mat/devis*100):0,pst=devis>0?(st/devis*100):0;
+  // % par section : tous calculés sur les revenus totaux (cohérent partout)
+  var pmo=rev>0?(mo/rev*100):0,pmat=rev>0?(mat/rev*100):0,pst=rev>0?(st/rev*100):0;
   var set=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
   set('r-rev',chf(rev));set('r-mo',chf(mo));set('r-mat',chf(mat));set('r-st',chf(st));
   set('r2-rev',chf(rev));set('r2-mo',chf(mo));set('r2-mat',chf(mat));set('r2-st',chf(st));set('r2-cout',chf(cout));
@@ -1090,7 +1194,7 @@ function calcAll(){
   function spct(id,val,base){var e=document.getElementById(id);if(e)e.textContent=base>0?(val/base*100).toFixed(0)+'%':'—';}
   spct('p2-mo',mo,rev);spct('p2-mat',mat,rev);spct('p2-st',st,rev);spct('p2-cout',cout,rev);
   set('mpct',marge.toFixed(1)+'%');set('mlbl',lblMarge(marge));set('margent',chf(argent)+' restant');
-  set('pct-mo',pmo.toFixed(0)+'% du devis');set('pct-mat',pmat.toFixed(0)+'% du devis');set('pct-st',pst.toFixed(0)+'% du devis');
+  set('pct-mo',pmo.toFixed(0)+'% des revenus');set('pct-mat',pmat.toFixed(0)+'% des revenus');set('pct-st',pst.toFixed(0)+'% des revenus');
   var mb=document.getElementById('mbox');if(mb)mb.style.background=colMarge(marge);
   autoSave();
 }
@@ -1239,26 +1343,26 @@ function exportAllPDF(){
     sec("MAIN D'OEUVRE");
     if(!(b.lignesMO||[]).filter(function(l){return l.heures;}).length){rowCout('Aucun ouvrier',0,0,null);}
     else{(b.lignesMO||[]).forEach(function(l){if(l.heures){var v=(l.heures||0)*(l.tauxH||0);rowCout(l.nom||'Ouvrier',v,c.rev>0?v/c.rev*100:0,l.heures+'h x '+l.tauxH+' CHF/h');}});}
-    totLine('TOTAL OUVRIERS',c.mo,c.pmo);y+=4;
+    totLine('TOTAL OUVRIERS',c.mo,c.rev>0?c.mo/c.rev*100:0);y+=4;
 
     // MATERIEL
     sec('MATERIEL');
     if(!(b.lignesMat||[]).filter(function(l){return l.montant;}).length){rowCout('Aucun materiel',0,0,null);}
     else{(b.lignesMat||[]).forEach(function(l){if(l.montant)rowCout(l.desc||'Materiel',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});}
-    totLine('TOTAL MATERIEL',c.mat,c.pmat);y+=4;
+    totLine('TOTAL MATERIEL',c.mat,c.rev>0?c.mat/c.rev*100:0);y+=4;
 
     // VEHICULE
     if((b.lignesVeh||[]).filter(function(l){return l.montant;}).length){
       sec('FRAIS VEHICULE');
       (b.lignesVeh||[]).forEach(function(l){if(l.montant)rowCout(l.cat||'Vehicule',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
-      totLine('TOTAL VEHICULE',c.veh,c.pveh);y+=4;
+      totLine('TOTAL VEHICULE',c.veh,c.rev>0?c.veh/c.rev*100:0);y+=4;
     }
 
     // SOUS-TRAITANCE
     if((b.lignesST||[]).filter(function(l){return l.montant;}).length){
       sec('SOUS-TRAITANCE');
       (b.lignesST||[]).forEach(function(l){if(l.montant)rowCout(l.desc||'Sous-traitance',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
-      totLine('TOTAL SOUS-TRAITANCE',c.st,c.pst);y+=4;
+      totLine('TOTAL SOUS-TRAITANCE',c.st,c.rev>0?c.st/c.rev*100:0);y+=4;
     }
 
     // RECAP
@@ -1377,7 +1481,7 @@ function genPDF(){
       }
     });
   }
-  totLine('TOTAL OUVRIERS',c.mo,c.pmo);y+=4;
+  totLine('TOTAL OUVRIERS',c.mo,c.rev>0?c.mo/c.rev*100:0);y+=4;
 
   // MATERIEL — avec %
   sec('MATERIEL');
@@ -1386,19 +1490,19 @@ function genPDF(){
   } else {
     b.lignesMat.forEach(function(l){if(l.montant)rowCout(l.desc||'Materiel',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
   }
-  totLine('TOTAL MATERIEL',c.mat,c.pmat);y+=4;
+  totLine('TOTAL MATERIEL',c.mat,c.rev>0?c.mat/c.rev*100:0);y+=4;
 
   // FRAIS VEHICULE — avec %
   if(b.lignesVeh&&b.lignesVeh.filter(function(l){return l.montant;}).length){
     sec('FRAIS VEHICULE');
     b.lignesVeh.forEach(function(l){if(l.montant)rowCout(l.cat||'Vehicule',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
-    totLine('TOTAL VEHICULE',c.veh,c.pveh);y+=4;
+    totLine('TOTAL VEHICULE',c.veh,c.rev>0?c.veh/c.rev*100:0);y+=4;
   }
   // SOUS-TRAITANCE — avec %
   if(b.lignesST&&b.lignesST.filter(function(l){return l.montant;}).length){
     sec('SOUS-TRAITANCE');
     b.lignesST.forEach(function(l){if(l.montant)rowCout(l.desc||'Sous-traitance',(l.montant||0),c.rev>0?(l.montant||0)/c.rev*100:0,null);});
-    totLine('TOTAL SOUS-TRAITANCE',c.st||0,c.pst||0);y+=4;
+    totLine('TOTAL SOUS-TRAITANCE',c.st||0,c.rev>0?(c.st||0)/c.rev*100:0);y+=4;
   }
 
   // RECAP FINAL
