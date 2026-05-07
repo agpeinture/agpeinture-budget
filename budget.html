@@ -1315,7 +1315,7 @@ function exportAllPDF(){
     function rowCout(lbl,val,pct,sub){
       doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(26,35,50);
       doc.text(lbl,14,y);
-      doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(Math.round(pct)+'%',pw-40,y,{align:'right'});
+      doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(Math.round(pct)+'%',pw-52,y,{align:'right'});
       doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(26,35,50);
       doc.text('CHF '+val.toFixed(2),pw-14,y,{align:'right'});
       if(sub){y+=4.5;doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(127,140,141);doc.text(sub,16,y);y+=2.5;}
@@ -1326,7 +1326,7 @@ function exportAllPDF(){
       sepline();
       doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);
       doc.text(lbl,14,y+4);
-      if(pct!==null){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(Math.round(pct)+'%',pw-40,y+4,{align:'right'});}
+      if(pct!==null){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(Math.round(pct)+'%',pw-52,y+4,{align:'right'});}
       doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);
       doc.text('CHF '+val.toFixed(2),pw-14,y+4,{align:'right'});
       y+=10;
@@ -1446,7 +1446,7 @@ function genPDF(){
     doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(26,35,50);
     doc.text(lbl,14,y);
     doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);
-    doc.text(Math.round(pct)+'%',pw-40,y,{align:'right'});
+    doc.text(Math.round(pct)+'%',pw-52,y,{align:'right'});
     doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(26,35,50);
     doc.text('CHF '+val.toFixed(2),pw-14,y,{align:'right'});
     if(sub){y+=4.5;doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(127,140,141);doc.text(sub,16,y);y+=2.5;}
@@ -1458,7 +1458,7 @@ function genPDF(){
     sepline();
     doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);
     doc.text(lbl,14,y+4);
-    if(pct!==null){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(Math.round(pct)+'%',pw-40,y+4,{align:'right'});}
+    if(pct!==null){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(127,140,141);doc.text(Math.round(pct)+'%',pw-52,y+4,{align:'right'});}
     doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(26,35,50);
     doc.text('CHF '+val.toFixed(2),pw-14,y+4,{align:'right'});
     y+=10;
