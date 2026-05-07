@@ -1092,17 +1092,16 @@ function moLineHTML(nom,h,taux){
 function renderMOLines(b){document.getElementById('mo-lines').innerHTML=(b.lignesMO||[]).map(function(l){return moLineHTML(l.nom,l.heures,l.tauxH);}).join('');}
 function addMOLineWithWorker(nom,taux){
   var el=document.getElementById('mo-lines');
-  var d=document.createElement('div');d.className='wline mo-line';
-  d.innerHTML=moLineHTML(nom,'',taux);
-  el.appendChild(d);
-  d.querySelector('.mo-h').focus();
+  el.insertAdjacentHTML('beforeend',moLineHTML(nom,'',taux));
+  var d=el.lastElementChild;
+  if(d){var h=d.querySelector('.mo-h');if(h)h.focus();}
   calcAll();
 }
 function addBlankMOLine(){
   var el=document.getElementById('mo-lines');
-  var d=document.createElement('div');d.className='wline mo-line';
-  d.innerHTML=moLineHTML('','','');
-  el.appendChild(d);d.querySelector('input').focus();
+  el.insertAdjacentHTML('beforeend',moLineHTML('','',''));
+  var d=el.lastElementChild;
+  if(d){var i=d.querySelector('input');if(i)i.focus();}
 }
 
 // MAT LINES
@@ -1115,7 +1114,7 @@ function matLineHTML(desc,mnt){
     +'</div>';
 }
 function renderMatLines(b){document.getElementById('mat-lines').innerHTML=(b.lignesMat||[]).map(function(l){return matLineHTML(l.desc,l.montant);}).join('');}
-function addMatLine(){var el=document.getElementById('mat-lines');var d=document.createElement('div');d.className='dline mat-line';d.innerHTML=matLineHTML('','');el.appendChild(d);d.querySelector('input').focus();}
+function addMatLine(){var el=document.getElementById('mat-lines');el.insertAdjacentHTML('beforeend',matLineHTML('',''));var d=el.lastElementChild;if(d){var i=d.querySelector('input');if(i)i.focus();}}
 
 // ST LINES
 function stLineHTML(desc,mnt){
@@ -1132,7 +1131,7 @@ function vehLineHTML(l,i){return'<div class="line-row veh-line"><select class="f
 function renderVehLines(b){document.getElementById('veh-lines').innerHTML=(b.lignesVeh||[]).map(function(l,i){return vehLineHTML(l,i);}).join('');}
 function addVehLine(){var c=document.getElementById('veh-lines');c.insertAdjacentHTML('beforeend',vehLineHTML({cat:'⛽ Essence',montant:''},c.children.length));}
 function renderSTLines(b){document.getElementById('st-lines').innerHTML=(b.lignesST||[]).map(function(l){return stLineHTML(l.desc,l.montant);}).join('');}
-function addSTLine(){var el=document.getElementById('st-lines');var d=document.createElement('div');d.className='dline st-line';d.innerHTML=stLineHTML('','');el.appendChild(d);d.querySelector('input').focus();}
+function addSTLine(){var el=document.getElementById('st-lines');el.insertAdjacentHTML('beforeend',stLineHTML('',''));var d=el.lastElementChild;if(d){var i=d.querySelector('input');if(i)i.focus();}}
 
 // CALC ALL
 function calcAll(){
