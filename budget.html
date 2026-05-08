@@ -548,10 +548,10 @@ try{if(localStorage.getItem('agp_unlock_budget')==='ok'){document.getElementById
       if(document.hidden){
         // App passe en background : force save immédiat sans attendre débounce
         if(dirty&&window.fbSave2){clearTimeout(window._fbt2);try{window.fbSave2();dirty=false;}catch(e){}}
-      } else {
-        // App redevient visible : force reload pour récupérer modifs des autres appareils
-        if(window.fbForceReload2)setTimeout(function(){window.fbForceReload2();},200);
       }
+      // Note : pas de fbForceReload sur visible (iOS déclenche visibilitychange
+      // trop souvent, ça écraserait les modifs locales). onSnapshot pousse les
+      // modifs des autres appareils en arrière-plan.
     });
   }catch(e){fbs('💾 Mode local','#7f8c8d');setTimeout(function(){window.refreshApp2&&window.refreshApp2();},100);}
 })();
