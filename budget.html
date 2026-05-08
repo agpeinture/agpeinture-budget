@@ -540,10 +540,19 @@ try{if(localStorage.getItem('agp_unlock_budget')==='ok'){document.getElementById
       else{fbs('☁️ Prêt','#27ae60');if(!started){started=true;window.refreshApp2&&window.refreshApp2();}}
     },function(e){fbs('⚠️ '+e.message,'#e74c3c');if(!started){started=true;window.refreshApp2&&window.refreshApp2();}});
     var _o=localStorage.setItem.bind(localStorage);
-    localStorage.setItem=function(k,v){_o(k,v);if(KS.indexOf(k)>=0){dirty=true;clearTimeout(window._fbt2);window._fbt2=setTimeout(function(){window.fbSave2&&window.fbSave2();dirty=false;},3000);fbs('☁️ Sauvegarde...','#f39c12');}};
+    localStorage.setItem=function(k,v){_o(k,v);if(KS.indexOf(k)>=0){dirty=true;clearTimeout(window._fbt2);window._fbt2=setTimeout(function(){window.fbSave2&&window.fbSave2();dirty=false;},600);fbs('☁️ Sauvegarde...','#f39c12');}};
     setInterval(function(){if(dirty&&window.fbSave2){window.fbSave2();dirty=false;}},30000);
     window.addEventListener('beforeunload',function(){if(dirty&&window.fbSave2)try{window.fbSave2();}catch(e){}});
-    document.addEventListener('visibilitychange',function(){if(document.hidden&&dirty&&window.fbSave2)try{window.fbSave2();}catch(e){}});
+    window.addEventListener('pagehide',function(){if(dirty&&window.fbSave2)try{window.fbSave2();dirty=false;}catch(e){}});
+    document.addEventListener('visibilitychange',function(){
+      if(document.hidden){
+        // App passe en background : force save immédiat sans attendre débounce
+        if(dirty&&window.fbSave2){clearTimeout(window._fbt2);try{window.fbSave2();dirty=false;}catch(e){}}
+      } else {
+        // App redevient visible : force reload pour récupérer modifs des autres appareils
+        if(window.fbForceReload2)setTimeout(function(){window.fbForceReload2();},200);
+      }
+    });
   }catch(e){fbs('💾 Mode local','#7f8c8d');setTimeout(function(){window.refreshApp2&&window.refreshApp2();},100);}
 })();
 </script>
