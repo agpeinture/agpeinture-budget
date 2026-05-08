@@ -524,6 +524,14 @@ try{if(localStorage.getItem('agp_unlock_budget')==='ok'){document.getElementById
     var DOC=db.collection('appdata').doc('agpeinture-budget-data');
     var KS=['agp_budgets','agp_bworkers'];
     var started=false,dirty=false;
+    // FONCTION GLOBALE pour déclencher cloud save directement (cf stock app)
+    window.triggerCloudSave2=function(){
+      if(!window.fbSave2) return;
+      dirty=true;
+      clearTimeout(window._fbt2);
+      window._fbt2=setTimeout(function(){window.fbSave2&&window.fbSave2();dirty=false;},600);
+      fbs('☁️ Sauvegarde...','#f39c12');
+    };
     // Toast visuel
     function showSyncToast2(msg,color){
       var t=document.getElementById('sync-toast-b');
@@ -600,8 +608,16 @@ try{if(localStorage.getItem('agp_unlock_budget')==='ok'){document.getElementById
       }
       else{fbs('☁️ Prêt','#27ae60');if(!started){started=true;window.refreshApp2&&window.refreshApp2();}}
     },function(e){fbs('⚠️ '+e.message,'#e74c3c');if(!started){started=true;window.refreshApp2&&window.refreshApp2();}});
-    var _o=localStorage.setItem.bind(localStorage);
-    localStorage.setItem=function(k,v){_o(k,v);if(KS.indexOf(k)>=0){dirty=true;clearTimeout(window._fbt2);window._fbt2=setTimeout(function(){window.fbSave2&&window.fbSave2();dirty=false;},600);fbs('☁️ Sauvegarde...','#f39c12');}};
+    // Hook robuste : se ré-installe automatiquement si écrasé (Firebase SDK peut remplacer setItem après init)
+    function installHookB(){
+      if(localStorage.setItem.toString().indexOf('KS.indexOf(k)>=0')!==-1) return false;
+      var cur=localStorage.setItem.bind(localStorage);
+      localStorage.setItem=function(k,v){cur(k,v);if(KS.indexOf(k)>=0){dirty=true;clearTimeout(window._fbt2);window._fbt2=setTimeout(function(){window.fbSave2&&window.fbSave2();dirty=false;},600);fbs('☁️ Sauvegarde...','#f39c12');}};
+      return true;
+    }
+    installHookB();
+    setTimeout(installHookB,500);setTimeout(installHookB,1500);setTimeout(installHookB,3000);setTimeout(installHookB,6000);
+    setInterval(installHookB,4000);
     setInterval(function(){if(dirty&&window.fbSave2){window.fbSave2();dirty=false;}},30000);
     window.addEventListener('beforeunload',function(){if(dirty&&window.fbSave2)try{window.fbSave2();}catch(e){}});
     window.addEventListener('pagehide',function(){if(dirty&&window.fbSave2)try{window.fbSave2();dirty=false;}catch(e){}});
@@ -648,7 +664,7 @@ function load(){
   try{var b=JSON.parse(localStorage.getItem('agp_budgets'));if(Array.isArray(b))budgets=b;}catch(e){budgets=[];}
   try{var w=JSON.parse(localStorage.getItem('agp_bworkers'));if(Array.isArray(w)&&w.length)gworkers=w;else gworkers=DEFAULT_GW.map(function(x){return Object.assign({},x);});}catch(e){gworkers=DEFAULT_GW.map(function(x){return Object.assign({},x);});}
 }
-function save(){localStorage.setItem('agp_budgets',JSON.stringify(budgets));localStorage.setItem('agp_bworkers',JSON.stringify(gworkers));}
+function save(){localStorage.setItem('agp_budgets',JSON.stringify(budgets));localStorage.setItem('agp_bworkers',JSON.stringify(gworkers));if(window.triggerCloudSave2)window.triggerCloudSave2();}
 
 // === DÉDOUBLONNAGE ===
 // Règle : doublon = même nom (insensible à la casse, espaces ignorés) ET même montant exact (au centime près).
