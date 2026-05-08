@@ -522,7 +522,7 @@ try{if(localStorage.getItem('agp_unlock_budget')==='ok'){document.getElementById
     var fbApp;try{fbApp=firebase.app();}catch(e){fbApp=firebase.initializeApp({apiKey:'AIzaSyB4387wUDckjCkx5Ac5cTiDwsmyGEZferQ',authDomain:'agpeinture-416d1.firebaseapp.com',projectId:'agpeinture-416d1',storageBucket:'agpeinture-416d1.firebasestorage.app',messagingSenderId:'837260095027',appId:'1:837260095027:web:4a34e02247532a4c8c7d46'});}
     var db=firebase.firestore();
     var DOC=db.collection('appdata').doc('agpeinture-budget-data');
-    var KS=['agp_budgets','agp_bworkers'];
+    var KS=['agp_budgets','agp_bworkers','agp_company'];
     var started=false,dirty=false;
     // FONCTION GLOBALE pour déclencher cloud save directement (cf stock app)
     window.triggerCloudSave2=function(){
@@ -715,6 +715,7 @@ function loadCo(){
 function saveCo(){
   var co={nom:document.getElementById('co-nom').value,addr:document.getElementById('co-addr').value,tel:document.getElementById('co-tel').value,email:document.getElementById('co-email').value};
   localStorage.setItem('agp_company',JSON.stringify(co));
+  if(window.triggerCloudSave2)window.triggerCloudSave2();
 }
 function fillCoFields(){
   var co=loadCo();
