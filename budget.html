@@ -6,6 +6,9 @@
 <link rel="apple-mobile-web-app-capable" content="yes">
 <link rel="apple-mobile-web-app-title" content="Rentabilité">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Rentabilité</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -522,7 +525,34 @@ try{if(localStorage.getItem('agp_unlock_budget')==='ok'){document.getElementById
     var KS=['agp_budgets','agp_bworkers'];
     var started=false,dirty=false;
     window.fbSave2=function(){var d={_t:Date.now()};KS.forEach(function(k){d[k]=localStorage.getItem(k)||'';});fbs('☁️ Sauvegarde...','#f39c12');DOC.set(d).then(function(){fbs('☁️ Synchronisé','#27ae60');}).catch(function(e){fbs('⚠️ '+e.message,'#e74c3c');});};
-    window.fbForceReload2=function(){fbs('☁️ Chargement...','#f39c12');DOC.get().then(function(doc){if(doc.exists){var d=doc.data();KS.forEach(function(k){if(d[k])localStorage.setItem(k,d[k]);});fbs('✅ Chargé !','#27ae60');window.refreshApp2&&window.refreshApp2();}else fbs('☁️ Aucune donnée','#f39c12');}).catch(function(e){fbs('⚠️ '+e.message,'#e74c3c');});};
+    window.fbForceReload2=function(verbose){
+      if(verbose===undefined) verbose=true;
+      fbs('☁️ Chargement...','#f39c12');
+      DOC.get().then(function(doc){
+        if(doc.exists){
+          var d=doc.data();
+          var nb=0,nw=0;
+          try{ nb = JSON.parse(d.agp_budgets||'[]').length; }catch(e){}
+          try{ nw = JSON.parse(d.agp_bworkers||'[]').length; }catch(e){}
+          KS.forEach(function(k){if(d[k])localStorage.setItem(k,d[k]);});
+          fbs('✅ Chargé !','#27ae60');
+          if(verbose){
+            var msg = '✅ Données chargées du cloud :\n\n'
+              + '📊 Budgets : '+nb+'\n'
+              + '👷 Ouvriers : '+nw;
+            if(nb===0 && nw===0) msg = '⚠️ Le cloud est vide (rien à charger)';
+            alert(msg);
+          }
+          window.refreshApp2&&window.refreshApp2();
+        } else {
+          fbs('☁️ Aucune donnée','#f39c12');
+          if(verbose) alert('⚠️ Aucune donnée trouvée dans le cloud.\n\nLe document Firebase est vide.');
+        }
+      }).catch(function(e){
+        fbs('⚠️ '+e.message,'#e74c3c');
+        if(verbose) alert('❌ Erreur de chargement :\n\n'+(e.code||'')+'\n'+(e.message||e));
+      });
+    };
     DOC.onSnapshot(function(doc){
       if(doc.exists){
         var d=doc.data(),ch=false;
@@ -544,14 +574,22 @@ try{if(localStorage.getItem('agp_unlock_budget')==='ok'){document.getElementById
     setInterval(function(){if(dirty&&window.fbSave2){window.fbSave2();dirty=false;}},30000);
     window.addEventListener('beforeunload',function(){if(dirty&&window.fbSave2)try{window.fbSave2();}catch(e){}});
     window.addEventListener('pagehide',function(){if(dirty&&window.fbSave2)try{window.fbSave2();dirty=false;}catch(e){}});
+    var lastVisibleReloadB = 0;
     document.addEventListener('visibilitychange',function(){
       if(document.hidden){
         // App passe en background : force save immédiat sans attendre débounce
         if(dirty&&window.fbSave2){clearTimeout(window._fbt2);try{window.fbSave2();dirty=false;}catch(e){}}
+      } else {
+        // App revient au devant : reload conditionnel et protégé
+        // Skip si modifs locales en attente / focus input / throttle 30s
+        var now = Date.now();
+        var ae = document.activeElement;
+        var inputFocused = ae && (ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
+        if(!dirty && !inputFocused && (now-lastVisibleReloadB) > 30000){
+          lastVisibleReloadB = now;
+          if(window.fbForceReload2) setTimeout(function(){window.fbForceReload2(false);},200);
+        }
       }
-      // Note : pas de fbForceReload sur visible (iOS déclenche visibilitychange
-      // trop souvent, ça écraserait les modifs locales). onSnapshot pousse les
-      // modifs des autres appareils en arrière-plan.
     });
   }catch(e){fbs('💾 Mode local','#7f8c8d');setTimeout(function(){window.refreshApp2&&window.refreshApp2();},100);}
 })();
