@@ -530,12 +530,26 @@ try{if(localStorage.getItem('agp_unlock_budget')==='ok'){document.getElementById
       if(!t){t=document.createElement('div');t.id='sync-toast-b';t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#27ae60;color:white;padding:10px 18px;border-radius:24px;font-family:Nunito,sans-serif;font-size:13px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,0.2);z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;';document.body.appendChild(t);}
       t.textContent=msg;t.style.background=color||'#27ae60';t.style.opacity='1';clearTimeout(window._toastT2);window._toastT2=setTimeout(function(){t.style.opacity='0';},1800);
     }
+    // Indicateur permanent
+    window.fbLastSave2 = null;
+    function updateSyncStatus2(){
+      if(!window.fbLastSave2) return;
+      var ago = Math.round((Date.now() - window.fbLastSave2) / 1000);
+      var txt;
+      if(ago < 5) txt = '✓ À jour';
+      else if(ago < 60) txt = '✓ Sauvé il y a '+ago+'s';
+      else if(ago < 3600) txt = '✓ Sauvé il y a '+Math.round(ago/60)+'min';
+      else txt = '✓ Sauvé il y a '+Math.round(ago/3600)+'h';
+      fbs(txt, '#27ae60');
+    }
+    setInterval(updateSyncStatus2, 10000);
     window.fbSave2=function(){
       var d={_t:Date.now()};
       KS.forEach(function(k){d[k]=localStorage.getItem(k)||'';});
       fbs('☁️ Sauvegarde...','#f39c12');
       DOC.set(d).then(function(){
-        fbs('☁️ Synchronisé','#27ae60');
+        window.fbLastSave2 = Date.now();
+        fbs('✓ À jour','#27ae60');
         showSyncToast2('✅ Sauvegardé','#27ae60');
       }).catch(function(e){
         fbs('⚠️ '+e.message,'#e74c3c');
