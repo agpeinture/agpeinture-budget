@@ -150,6 +150,9 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Helvetic
 /* Worker picker overlay */
 #picker{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:flex-end;}
 #picker.open{display:flex;}
+/* Model picker (réutilise les styles .picker-*) */
+#modelpicker{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:flex-end;}
+#modelpicker.open{display:flex;}
 .picker-sheet{background:white;border-radius:20px 20px 0 0;width:100%;max-height:70vh;overflow-y:auto;padding:16px;}
 .picker-title{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
 .picker-item{display:flex;align-items:center;gap:10px;padding:11px 10px;border-radius:10px;cursor:pointer;margin-bottom:4px;}
@@ -199,6 +202,17 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Helvetic
     </div>
     <div id="picker-list"></div>
     <button class="btnadd" onclick="closePicker();addBlankMOLine()">+ Saisie manuelle</button>
+  </div>
+</div>
+
+<!-- Picker de modèles pour nouveau budget -->
+<div id="modelpicker">
+  <div class="picker-sheet">
+    <div class="picker-title">
+      <span>Nouveau budget</span>
+      <button onclick="closeModelPicker()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">×</button>
+    </div>
+    <div id="modelpicker-list"></div>
   </div>
 </div>
 
@@ -440,6 +454,22 @@ body{background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Helvetic
           <div class="mlbl2" id="mlbl">MARGE</div>
           <div class="margent" id="margent">CHF 0.00 restant</div>
         </div>
+        <!-- Indicateurs horaires -->
+        <div id="hbox" style="display:none;margin-top:10px;background:var(--bg);border-radius:12px;padding:12px;border:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⏱️ Productivité horaire</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
+            <span style="font-size:13px;color:var(--text)">Heures totales</span>
+            <span id="h-total" style="font-size:14px;font-weight:700">0 h</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
+            <span style="font-size:13px;color:var(--text)">CA / heure</span>
+            <span id="h-ca" style="font-size:14px;font-weight:700;color:var(--primary)">CHF 0.00 / h</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-top:1px solid var(--border);margin-top:4px;padding-top:8px">
+            <span style="font-size:13px;color:var(--text);font-weight:600">Bénéfice / heure</span>
+            <span id="h-arg" style="font-size:15px;font-weight:800">CHF 0.00 / h</span>
+          </div>
+        </div>
       </div>
 
       <div class="actbar">
@@ -615,13 +645,16 @@ function calcB(b){
   var devis=+b.devisHT||0;
   var extras=0;(b.revExtras||[]).forEach(function(l){extras+=+l.montant||0;});
   var rev=devis+extras;
+  var heures=0;(b.lignesMO||[]).forEach(function(l){heures+=+l.heures||0;});
   var mo=0;(b.lignesMO||[]).forEach(function(l){mo+=(+l.heures||0)*(+l.tauxH||0);});
   var mat=0;(b.lignesMat||[]).forEach(function(l){mat+=+l.montant||0;});
   var st=0;(b.lignesST||[]).forEach(function(l){st+=+l.montant||0;});
   var veh=0;(b.lignesVeh||[]).forEach(function(l){veh+=+l.montant||0;});
   var cout=mo+mat+st+veh;var argent=rev-cout;var marge=rev>0?(argent/rev*100):0;
+  var caH=heures>0?(rev/heures):0;
+  var argentH=heures>0?(argent/heures):0;
   var pmo=rev>0?(mo/rev*100):0,pmat=rev>0?(mat/rev*100):0,pst=rev>0?(st/rev*100):0,pveh=rev>0?(veh/rev*100):0;
-  return{devis:devis,rev:rev,mo:mo,mat:mat,st:st,veh:veh,cout:cout,argent:argent,marge:marge,pmo:pmo,pmat:pmat,pst:pst,pveh:pveh};
+  return{devis:devis,rev:rev,heures:heures,mo:mo,mat:mat,st:st,veh:veh,cout:cout,argent:argent,marge:marge,caH:caH,argentH:argentH,pmo:pmo,pmat:pmat,pst:pst,pveh:pveh};
 }
 
 // REFRESH
@@ -635,7 +668,7 @@ function toList(){
   document.getElementById('vedit').style.display='none';
   document.getElementById('vyears').style.display='none';
   document.getElementById('htitle').textContent='Budget Chantier';
-  document.getElementById('hbtns').innerHTML='<button class="hbtn ghost" onclick="toYears()">📊 Bilan</button><button class="hbtn ghost" onclick="toWorkers()">⚙️</button><button class="hbtn" onclick="newBudget()">+ Nouveau</button>';
+  document.getElementById('hbtns').innerHTML='<button class="hbtn ghost" onclick="toYears()">📊 Bilan</button><button class="hbtn ghost" onclick="toWorkers()">⚙️</button><button class="hbtn" onclick="openNewBudgetPicker()">+ Nouveau</button>';
   renderList();
 }
 
@@ -774,6 +807,14 @@ function renderList(){
     var margeDisplay=termine
       ?('<div class="mp">'+c.marge.toFixed(0)+'%</div><div class="ml">MARGE</div>')
       :('<div style="font-size:18px">⏳</div><div class="ml">En cours</div>');
+    // Ligne CA/h (si heures saisies)
+    var hLine='';
+    if(c.heures>0){
+      var caHcol=termine?(c.argentH>=30?'var(--green)':c.argentH>=0?'var(--orange)':'var(--red)'):'var(--muted)';
+      hLine='<div style="font-size:11px;color:var(--muted);margin-top:4px;display:flex;gap:8px;flex-wrap:wrap"><span>⏱️ '+c.heures.toFixed(0)+'h</span><span>·</span><span>'+chf(c.caH).replace('CHF ','')+' CHF/h</span>'
+        +(termine?'<span>·</span><span style="color:'+caHcol+';font-weight:700">'+(c.argentH>=0?'+':'')+chf(c.argentH).replace('CHF ','')+'/h net</span>':'')
+        +'</div>';
+    }
     return'<div class="bcard" onclick="open1('+b.id+')">'
       +'<div class="mbadge" style="background:'+col+'">'+margeDisplay+'</div>'
       +'<div class="binfo">'
@@ -786,6 +827,7 @@ function renderList(){
             :'<div class="bamt"><strong style="color:var(--muted)">'+chf(c.cout)+'</strong>Saisi</div>')
           +'<div class="bamt"><strong>'+chf(c.cout)+'</strong>Coûts</div>'
         +'</div>'
+        +hLine
         +noteSnippet
       +'</div>'
       +'</div>';
@@ -793,15 +835,17 @@ function renderList(){
 
   // Helper : en-tête de section année avec mini-récap
   function renderYearHeader(year, yearBudgets){
-    var totalRev=0, totalArgent=0, ntop=0, nmed=0, nperte=0;
+    var totalRev=0, totalArgent=0, totalH=0, ntop=0, nmed=0, nperte=0;
     yearBudgets.forEach(function(b){
       var c=calcB(b);
-      totalRev+=c.rev; totalArgent+=c.argent;
+      totalRev+=c.rev; totalArgent+=c.argent; totalH+=c.heures;
       if(c.marge>=10) ntop++;
       else if(c.marge>=0) nmed++;
       else nperte++;
     });
     var marge = totalRev>0 ? (totalArgent/totalRev*100) : 0;
+    var caH = totalH>0 ? (totalRev/totalH) : 0;
+    var argentH = totalH>0 ? (totalArgent/totalH) : 0;
     var col = colMarge(marge);
     var verdict = '';
     if(totalRev>0){
@@ -810,14 +854,18 @@ function renderList(){
       else verdict='🔴';
     }
     var n = yearBudgets.length;
-    return '<div style="display:flex;align-items:center;gap:10px;margin:18px 0 8px;padding:10px 14px;background:linear-gradient(135deg,'+col+'15 0%,'+col+'08 100%);border-left:4px solid '+col+';border-radius:10px">'
-      +'<div style="font-size:20px;font-weight:900;color:'+col+'">'+verdict+' '+year+'</div>'
-      +'<div style="flex:1;font-size:11px;color:var(--muted);font-weight:600">'+n+' budget'+(n>1?'s':'')+' · '+chf(totalRev)+(totalRev>0?' · marge '+marge.toFixed(1)+'%':'')+'</div>'
-      +'<div style="display:flex;gap:4px;font-size:10px;font-weight:700">'
-        +(ntop>0?'<span style="background:var(--green);color:white;padding:2px 6px;border-radius:8px">🟢 '+ntop+'</span>':'')
-        +(nmed>0?'<span style="background:var(--orange);color:white;padding:2px 6px;border-radius:8px">🟠 '+nmed+'</span>':'')
-        +(nperte>0?'<span style="background:var(--red);color:white;padding:2px 6px;border-radius:8px">🔴 '+nperte+'</span>':'')
+    var hLine = totalH>0 ? '<div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:3px">⏱️ '+totalH.toFixed(0)+'h · '+chf(caH).replace('CHF ','')+' CHF/h · '+(argentH>=0?'+':'')+chf(argentH).replace('CHF ','')+'/h net</div>' : '';
+    return '<div style="margin:18px 0 8px;padding:10px 14px;background:linear-gradient(135deg,'+col+'15 0%,'+col+'08 100%);border-left:4px solid '+col+';border-radius:10px">'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<div style="font-size:20px;font-weight:900;color:'+col+'">'+verdict+' '+year+'</div>'
+        +'<div style="flex:1;font-size:11px;color:var(--muted);font-weight:600">'+n+' budget'+(n>1?'s':'')+' · '+chf(totalRev)+(totalRev>0?' · marge '+marge.toFixed(1)+'%':'')+'</div>'
+        +'<div style="display:flex;gap:4px;font-size:10px;font-weight:700">'
+          +(ntop>0?'<span style="background:var(--green);color:white;padding:2px 6px;border-radius:8px">🟢 '+ntop+'</span>':'')
+          +(nmed>0?'<span style="background:var(--orange);color:white;padding:2px 6px;border-radius:8px">🟠 '+nmed+'</span>':'')
+          +(nperte>0?'<span style="background:var(--red);color:white;padding:2px 6px;border-radius:8px">🔴 '+nperte+'</span>':'')
+        +'</div>'
       +'</div>'
+      +hLine
     +'</div>';
   }
 
@@ -893,15 +941,17 @@ function renderYears(){
 
   el.innerHTML=years.map(function(y){
     var list=byYear[y];
-    var top=0,med=0,perte=0,totalRev=0,totalArgent=0;
+    var top=0,med=0,perte=0,totalRev=0,totalArgent=0,totalH=0;
     list.forEach(function(b){
       var c=calcB(b);
-      totalRev+=c.rev;totalArgent+=c.argent;
+      totalRev+=c.rev;totalArgent+=c.argent;totalH+=c.heures;
       if(c.marge>=10)top++;
       else if(c.marge>=0)med++;
       else perte++;
     });
     var margeGlob=totalRev>0?(totalArgent/totalRev*100):0;
+    var caH=totalH>0?(totalRev/totalH):0;
+    var argentH=totalH>0?(totalArgent/totalH):0;
     var col=colMarge(margeGlob);
     var verdict='—',vCol=col;
     if(totalRev>0){
@@ -909,6 +959,7 @@ function renderYears(){
       else if(margeGlob>=0){verdict='🟠 Année juste rentable';vCol='var(--orange)';}
       else{verdict='🔴 Année en perte';vCol='var(--red)';}
     }
+    var hLine = totalH>0 ? '<div style="margin-top:10px;padding:8px 10px;background:var(--brand-soft);border-radius:8px;display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700"><span style="color:var(--muted)">⏱️ '+totalH.toFixed(0)+' h travaillées</span><span style="color:var(--brand)">'+chf(caH).replace('CHF ','')+' CHF/h · '+(argentH>=0?'+':'')+chf(argentH).replace('CHF ','')+'/h net</span></div>' : '';
     return '<div class="dash" style="margin-bottom:14px;cursor:pointer" onclick="setPeriod(\''+y+'\');toList();">'
       +'<div class="dash-title" style="display:flex;justify-content:space-between;align-items:center">'
         +'<span>📅 Année '+y+' · '+list.length+' budget'+(list.length>1?'s':'')+'</span>'
@@ -924,6 +975,7 @@ function renderYears(){
         +'<div class="dstat" style="background:'+col+'20;border:1px solid '+col+'"><div class="sv" style="color:'+col+'">'+margeGlob.toFixed(1)+'%</div><div class="sl">Marge</div></div>'
         +'<div class="dstat"><div class="sv" style="color:'+(totalArgent>=0?'var(--green)':'var(--red)')+'">'+chf(totalArgent)+'</div><div class="sl">Restant</div></div>'
       +'</div>'
+      +hLine
     +'</div>';
   }).join('')
   +'<div style="text-align:center;font-size:12px;color:var(--muted);margin-top:8px;font-style:italic">💡 Tape sur une année pour voir le détail</div>';
@@ -1024,6 +1076,65 @@ function pickWorker(id){
 function newBudget(){
   var b={id:gid(),client:'',chantier:'',statut:'encours',devisHT:0,revExtras:[],lignesMO:[],lignesMat:[],lignesST:[],lignesVeh:[],createdAt:Date.now(),updatedAt:Date.now()};
   budgets.push(b);save();curId=b.id;renderEdit(b);
+}
+
+// Ouvre un picker proposant : nouveau vierge ou depuis modèle existant
+function openNewBudgetPicker(){
+  var el=document.getElementById('modelpicker-list');
+  // Trier par date décroissante (plus récent en premier)
+  var sorted=budgets.slice().sort(function(a,b){return (b.updatedAt||b.createdAt||b.id)-(a.updatedAt||a.createdAt||a.id);});
+  var html='<div class="picker-item" onclick="closeModelPicker();newBudget()">'
+    +'<div class="picker-dot" style="background:var(--brand-soft);color:var(--brand)">📄</div>'
+    +'<div class="picker-name"><strong>Budget vierge</strong><div style="font-size:11px;color:var(--muted);font-weight:400">Repartir de zéro</div></div>'
+    +'<div class="picker-plus">+</div>'
+    +'</div>';
+  if(sorted.length){
+    html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 4px 6px">📋 Depuis un modèle existant</div>';
+    html+=sorted.map(function(b){
+      var c=calcB(b);
+      var subline=esc(b.chantier||'—')+' · '+chf(c.rev);
+      return '<div class="picker-item" onclick="newFromTemplate('+b.id+')">'
+        +'<div class="picker-dot">'+esc((b.client||'?').substring(0,2).toUpperCase())+'</div>'
+        +'<div class="picker-name">'+esc(b.client||'Sans nom')+'<div style="font-size:11px;color:var(--muted);font-weight:400">'+subline+'</div></div>'
+        +'<div class="picker-plus">＋</div>'
+        +'</div>';
+    }).join('');
+  }
+  el.innerHTML=html;
+  document.getElementById('modelpicker').classList.add('open');
+}
+function closeModelPicker(){document.getElementById('modelpicker').classList.remove('open');}
+document.getElementById('modelpicker').addEventListener('click',function(e){if(e.target===this)closeModelPicker();});
+
+function newFromTemplate(sourceId){
+  var src=budgets.find(function(x){return x.id===sourceId;});
+  if(!src)return;
+  closeModelPicker();
+  // Cloner les lignes uniquement (sans copier client/chantier/devis/notes)
+  var b={
+    id:gid(),
+    client:'',
+    chantier:'',
+    statut:'encours',
+    devisHT:0,
+    revExtras:[],
+    lignesMO:JSON.parse(JSON.stringify(src.lignesMO||[])),
+    lignesMat:JSON.parse(JSON.stringify(src.lignesMat||[])),
+    lignesST:JSON.parse(JSON.stringify(src.lignesST||[])),
+    lignesVeh:JSON.parse(JSON.stringify(src.lignesVeh||[])),
+    createdAt:Date.now(),
+    updatedAt:Date.now()
+  };
+  // Vider les montants matériel/véhicule/ST (les structures restent mais sans valeurs)
+  b.lignesMat.forEach(function(l){l.montant='';});
+  b.lignesST.forEach(function(l){l.montant='';});
+  b.lignesVeh.forEach(function(l){l.montant='';});
+  // Garder les heures MO à 0 (l'utilisateur les saisira pour ce nouveau chantier)
+  b.lignesMO.forEach(function(l){l.heures='';});
+  budgets.push(b);
+  save();
+  curId=b.id;
+  renderEdit(b);
 }
 function open1(id){
   curId=id;
@@ -1154,11 +1265,12 @@ function calcAll(){
     });
   }
   var mo=0;
+  var totalH=0;
   var moRows=document.querySelectorAll('.mo-line');
   moRows.forEach(function(row){
     var h=parseFloat(row.querySelector('.mo-h').value)||0;
     var t=parseFloat(row.querySelector('.mo-taux').value)||0;
-    var tot=h*t;mo+=tot;
+    var tot=h*t;mo+=tot;totalH+=h;
     row.querySelector('.mo-tot').textContent=chf(tot);
     var p=row.querySelector('.mo-wpct');if(p)p.textContent=rev>0?(tot/rev*100).toFixed(0)+'%':'—';
   });
@@ -1174,6 +1286,10 @@ function calcAll(){
   markDuplicates(Array.prototype.slice.call(matRows),
     function(r){return r.querySelector('.mat-desc').value;},
     function(r){return parseFloat(r.querySelector('.mat-mnt').value)||0;});
+  var veh=0;
+  document.querySelectorAll('.veh-line').forEach(function(row){
+    var mnt=parseFloat(row.querySelector('.veh-amt').value)||0;veh+=mnt;
+  });
   var st=0;
   var stRows=document.querySelectorAll('.st-line');
   stRows.forEach(function(row){
@@ -1183,17 +1299,35 @@ function calcAll(){
   markDuplicates(Array.prototype.slice.call(stRows),
     function(r){return r.querySelector('.st-desc').value;},
     function(r){return parseFloat(r.querySelector('.st-mnt').value)||0;});
-  var cout=mo+mat+st,argent=rev-cout,marge=rev>0?(argent/rev*100):0;
+  var cout=mo+mat+st+veh,argent=rev-cout,marge=rev>0?(argent/rev*100):0;
+  var caH=totalH>0?(rev/totalH):0;
+  var argentH=totalH>0?(argent/totalH):0;
   // % par section : tous calculés sur les revenus totaux (cohérent partout)
-  var pmo=rev>0?(mo/rev*100):0,pmat=rev>0?(mat/rev*100):0,pst=rev>0?(st/rev*100):0;
+  var pmo=rev>0?(mo/rev*100):0,pmat=rev>0?(mat/rev*100):0,pst=rev>0?(st/rev*100):0,pveh=rev>0?(veh/rev*100):0;
   var set=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
   set('r-rev',chf(rev));set('r-mo',chf(mo));set('r-mat',chf(mat));set('r-st',chf(st));
-  set('r2-rev',chf(rev));set('r2-mo',chf(mo));set('r2-mat',chf(mat));set('r2-st',chf(st));set('r2-cout',chf(cout));
+  set('r2-rev',chf(rev));set('r2-mo',chf(mo));set('r2-mat',chf(mat));set('r2-st',chf(st));set('r2-veh',chf(veh));set('r2-cout',chf(cout));
   // % dans résultat
   function spct(id,val,base){var e=document.getElementById(id);if(e)e.textContent=base>0?(val/base*100).toFixed(0)+'%':'—';}
-  spct('p2-mo',mo,rev);spct('p2-mat',mat,rev);spct('p2-st',st,rev);spct('p2-cout',cout,rev);
+  spct('p2-mo',mo,rev);spct('p2-mat',mat,rev);spct('p2-st',st,rev);spct('r2-veh-pct',veh,rev);spct('p2-cout',cout,rev);
   set('mpct',marge.toFixed(1)+'%');set('mlbl',lblMarge(marge));set('margent',chf(argent)+' restant');
   set('pct-mo',pmo.toFixed(0)+'% des revenus');set('pct-mat',pmat.toFixed(0)+'% des revenus');set('pct-st',pst.toFixed(0)+'% des revenus');
+  // Indicateurs horaires
+  var hbox=document.getElementById('hbox');
+  if(hbox){
+    if(totalH>0){
+      hbox.style.display='block';
+      set('h-total',totalH.toFixed(1).replace(/\.0$/,'')+' h');
+      set('h-ca',chf(caH)+' / h');
+      var hArgEl=document.getElementById('h-arg');
+      if(hArgEl){
+        hArgEl.textContent=(argentH>=0?'+':'')+chf(argentH)+' / h';
+        hArgEl.style.color=argentH>=30?'var(--green)':argentH>=0?'var(--orange)':'var(--red)';
+      }
+    } else {
+      hbox.style.display='none';
+    }
+  }
   var mb=document.getElementById('mbox');if(mb)mb.style.background=colMarge(marge);
   autoSave();
 }
